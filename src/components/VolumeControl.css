@@ -1,0 +1,167 @@
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 15px;
+  border-radius: 25px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.dark-theme .volume-control {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light-theme .volume-control {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.volume-control:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.volume-icon {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+}
+
+.volume-icon:hover {
+  background: rgba(102, 126, 234, 0.1);
+  transform: scale(1.1);
+}
+
+.volume-icon:active {
+  transform: scale(0.95);
+}
+
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #667eea 0%, #764ba2 100%);
+  outline: none;
+  cursor: pointer;
+  transition: width 0.3s ease;
+}
+
+.volume-slider:hover {
+  width: 140px;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #667eea;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 3px 12px rgba(102, 126, 234, 0.5);
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid #667eea;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s ease;
+}
+
+.volume-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 3px 12px rgba(102, 126, 234, 0.5);
+}
+
+.volume-value {
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 35px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.dark-theme .volume-value {
+  color: #e0e0e0;
+}
+
+.light-theme .volume-value {
+  color: #4a5568;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .volume-control {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  
+  .volume-icon {
+    font-size: 1.3rem;
+    width: 32px;
+    height: 32px;
+  }
+  
+  .volume-slider {
+    width: 100px;
+  }
+  
+  .volume-slider:hover {
+    width: 110px;
+  }
+  
+  .volume-value {
+    font-size: 0.8rem;
+    min-width: 30px;
+  }
+}
+
+@media (max-width: 480px) {
+  .volume-control {
+    gap: 6px;
+    padding: 6px 10px;
+  }
+  
+  .volume-icon {
+    font-size: 1.2rem;
+    width: 28px;
+    height: 28px;
+  }
+  
+  .volume-slider {
+    width: 80px;
+  }
+  
+  .volume-slider:hover {
+    width: 80px; /* 移动端不增加宽度 */
+  }
+  
+  .volume-value {
+    display: none; /* 移动端隐藏数值显示 */
+  }
+}

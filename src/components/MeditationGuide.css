@@ -1,0 +1,224 @@
+.meditation-guide {
+  margin-top: 20px;
+  border-radius: 15px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark-theme .meditation-guide {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light-theme .meditation-guide {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
+}
+
+.meditation-guide h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.8rem;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.dark-theme .meditation-guide h2 {
+  color: #e0e0e0;
+}
+
+.light-theme .meditation-guide h2 {
+  color: #4a5568;
+}
+
+.guide-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.guide-toggle:hover {
+  background: #667eea;
+  color: white;
+}
+
+.arrow {
+  transition: transform 0.3s ease;
+  font-size: 0.8rem;
+}
+
+.arrow.up {
+  transform: rotate(180deg);
+}
+
+.guide-content {
+  margin-top: 20px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.guide-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.nav-btn {
+  padding: 8px 16px;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-btn:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+}
+
+.nav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.step-indicator {
+  font-weight: 600;
+  color: #333;
+  font-size: 1rem;
+}
+
+.step-content {
+  padding: 25px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e0e0e0;
+}
+
+.dark-theme .step-content {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light-theme .step-content {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
+}
+
+.all-steps-content {
+  max-height: 400px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.all-steps-content ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.all-steps-content li {
+  padding: 15px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.dark-theme .all-steps-content li {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e0e0e0;
+}
+
+.light-theme .all-steps-content li {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e0e0e0;
+  color: #333;
+}
+
+.all-steps-content li:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateX(5px);
+}
+
+.all-steps-content li.current {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  font-weight: 600;
+}
+
+.step-content p {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  margin: 0;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.dark-theme .step-content p {
+  color: #e0e0e0;
+}
+
+.light-theme .step-content p {
+  color: #4a5568;
+}
+
+.all-steps-toggle {
+  text-align: center;
+}
+
+.view-all-btn {
+  padding: 8px 20px;
+  border: 2px solid #764ba2;
+  background: white;
+  color: #764ba2;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.view-all-btn:hover {
+  background: #764ba2;
+  color: white;
+}
+
+@media (max-width: 480px) {
+  .guide-navigation {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .nav-btn {
+    width: 80px;
+  }
+  
+  .step-content p {
+    font-size: 1rem;
+  }
+}

@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.sleepmeditation'
+    compileSdk 34
+    
+    // 启用BuildConfig功能
+    buildFeatures {
+        buildConfig true
+    }
+
+    // 定义构建配置属性，控制是否包含音乐文件
+    // 默认包含音乐文件
+    def includeMusicFiles = true
+
+    defaultConfig {
+        applicationId "com.example.sleepmeditation"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        // 在BuildConfig中添加标志，供代码中使用
+        buildConfigField "boolean", "INCLUDE_MUSIC_FILES", "${includeMusicFiles}"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // 可以为release构建单独设置
+            // buildConfigField "boolean", "INCLUDE_MUSIC_FILES", "true"
+        }
+        
+        // 添加一个不包含音乐文件的构建类型
+        releaseNoMusic {
+            initWith release
+            buildConfigField "boolean", "INCLUDE_MUSIC_FILES", "false"
+            applicationIdSuffix ".nomusic"
+            versionNameSuffix "-nomusic"
+            
+            // 使用不同的applicationId和版本名后缀，以便可以同时安装包含和不包含音乐的版本
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+}

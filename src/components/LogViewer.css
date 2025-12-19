@@ -1,0 +1,223 @@
+.log-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.log-viewer-container {
+  width: 90%;
+  height: 80%;
+  max-width: 1200px;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.log-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #444;
+}
+
+.log-viewer-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: #444;
+}
+
+.log-viewer-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #2d2d2d;
+  border-bottom: 1px solid #444;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.filter-controls, .action-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-controls label, .action-controls label {
+  color: #ccc;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.filter-controls select, .action-controls button {
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  background-color: #3a3a3a;
+  color: #fff;
+  font-size: 14px;
+}
+
+.filter-controls select:focus, .action-controls button:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+.action-controls button {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.action-controls button:hover {
+  background-color: #4a4a4a;
+}
+
+.log-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.no-logs {
+  color: #888;
+  text-align: center;
+  padding: 20px;
+  font-style: italic;
+}
+
+.log-entry {
+  margin-bottom: 5px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  word-wrap: break-word;
+}
+
+.log-debug {
+  background-color: rgba(128, 128, 128, 0.1);
+  border-left: 3px solid #888;
+}
+
+.log-info {
+  background-color: rgba(0, 123, 255, 0.1);
+  border-left: 3px solid #007bff;
+}
+
+.log-warn {
+  background-color: rgba(255, 193, 7, 0.1);
+  border-left: 3px solid #ffc107;
+}
+
+.log-error {
+  background-color: rgba(220, 53, 69, 0.1);
+  border-left: 3px solid #dc3545;
+}
+
+.log-timestamp {
+  color: #999;
+  margin-right: 8px;
+  font-size: 12px;
+}
+
+.log-level {
+  font-weight: bold;
+  margin-right: 8px;
+  min-width: 60px;
+  display: inline-block;
+}
+
+.log-debug .log-level {
+  color: #888;
+}
+
+.log-info .log-level {
+  color: #4a9eff;
+}
+
+.log-warn .log-level {
+  color: #ffc107;
+}
+
+.log-error .log-level {
+  color: #ff6b6b;
+}
+
+.log-message {
+  color: #ddd;
+}
+
+.log-data {
+  margin-top: 5px;
+  margin-left: 20px;
+}
+
+.log-data summary {
+  color: #aaa;
+  cursor: pointer;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.log-data pre {
+  background-color: #222;
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 12px;
+  color: #ddd;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .log-viewer-container {
+    width: 95%;
+    height: 90%;
+  }
+  
+  .log-viewer-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .filter-controls, .action-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

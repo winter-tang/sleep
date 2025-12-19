@@ -1,0 +1,154 @@
+/* AlarmModal.css */
+.alarm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.alarm-modal-content {
+  background-color: #ffffff;
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+  min-width: 280px;
+  border: 3px solid #ff6b6b;
+}
+
+/* 深色主题样式 */
+.dark-theme .alarm-modal-content {
+  background-color: #2d3436;
+  color: #ffffff;
+  border-color: #ff6b6b;
+}
+
+.alarm-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+  animation: pulse 1.5s infinite;
+}
+
+.alarm-title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #ff6b6b;
+}
+
+.dark-theme .alarm-title {
+  color: #ff7675;
+}
+
+.alarm-message {
+  font-size: 18px;
+  margin-bottom: 25px;
+  color: #666;
+}
+
+.dark-theme .alarm-message {
+  color: #dfe6e9;
+}
+
+.alarm-close-button {
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.alarm-close-button:hover {
+  background-color: #ff5252;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.alarm-close-button:active {
+  transform: translateY(0);
+}
+
+.alarm-close-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.3);
+}
+
+/* 深色主题下的按钮样式 */
+.dark-theme .alarm-close-button {
+  background-color: #ff7675;
+}
+
+.dark-theme .alarm-close-button:hover {
+  background-color: #fd79a8;
+  box-shadow: 0 4px 12px rgba(255, 118, 117, 0.3);
+}
+
+.dark-theme .alarm-close-button:focus {
+  box-shadow: 0 0 0 3px rgba(255, 118, 117, 0.3);
+}
+
+/* 闪烁动画 */
+.blink {
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0.3; }
+}
+
+/* 淡入动画 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 滑入动画 */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 脉冲动画 */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* 确保在移动设备上也有良好的显示效果 */
+@media (max-width: 480px) {
+  .alarm-modal-content {
+    padding: 20px;
+    margin: 20px;
+    width: calc(100% - 40px);
+    min-width: auto;
+  }
+  
+  .alarm-title {
+    font-size: 24px;
+  }
+  
+  .alarm-icon {
+    font-size: 40px;
+  }
+}

@@ -1,0 +1,102 @@
+/* 播放记录查看器样式 */
+.playback-history-modal {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.total-plays-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+  color: white;
+}
+
+.total-plays-number {
+  font-size: 3rem;
+  font-weight: bold;
+  margin: 10px 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.history-list-container {
+  margin-top: 20px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: all 0.3s ease;
+}
+
+.history-item:hover {
+  background: rgba(255,255,255,0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.history-date {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.history-duration {
+  font-weight: bold;
+  color: #667eea;
+}
+
+.no-history {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* 深色模式适配 */
+.dark-theme .history-item {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.1);
+}
+
+.dark-theme .history-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+  .playback-history-modal {
+    max-width: 90vw;
+    margin: 10px;
+  }
+  
+  .total-plays-number {
+    font-size: 2.5rem;
+  }
+  
+  .history-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .history-duration {
+    align-self: flex-end;
+  }
+}

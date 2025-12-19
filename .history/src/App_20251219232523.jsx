@@ -1,0 +1,398 @@
+import { useState, useEffect } from 'react'
+import './App.css'
+import Timer from './components/Timer'
+import PlayControls from './components/PlayControls'
+import VolumeControl from './components/VolumeControl'
+import AudioPlayer from './components/AudioPlayer'
+import PlaybackHistoryViewer from './components/PlaybackHistoryViewer'
+import AlarmModal from './components/AlarmModal'
+import LogViewer from './components/LogViewer'
+import StatisticsIcon from './assets/StatisticsIcon'
+import { savePlaybackRecord } from './utils/PlaybackHistory'
+import './utils/LogManager' // 初始化日志管理器
+
+function App() {
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [timerDuration, setTimerDuration] = useState(60) // 默认1小时（分钟）
+  const [timeRemaining, setTimeRemaining] = useState(60 * 60) // 默认1小时（秒）
+  const [timerActive, setTimerActive] = useState(false)
+  const [volume, setVolume] = useState(0.5)
+  const [isDarkMode, setIsDarkMode] = useState(true) // 默认深色模式，适合夜间使用
+  const [playMeditationAudio, setPlayMeditationAudio] = useState(true) // 默认播放冥想引导
+  const [enableAlarm, setEnableAlarm] = useState(false) // 默认不启用闹钟功能
+  const [showInstructions, setShowInstructions] = useState(false) // 控制功能说明模态框显示
+  const [showPlaybackHistory, setShowPlaybackHistory] = useState(false) // 控制播放记录模态框显示
+  const [showAlarmModal, setShowAlarmModal] = useState(false) // 控制闹钟弹窗显示
+  const [showLogViewer, setShowLogViewer] = useState(false) // 控制日志查看器显示
+  
+  // 初始化应用
+  useEffect(() => {
+    log.info('应用初始化开始')
+    try {
+      // 恢复保存的设置
+      const savedVolume = localStorage.getItem('volume')
+      const savedTheme = localStorage.getItem('theme')
+      const savedPlayMeditationAudio = localStorage.getItem('playMeditationAudio')
+      
+      log.debug('加载保存的设置', {
+        savedVolume,
+        savedTheme,
+        savedPlayMeditationAudio
+      })
+      
+      if (savedVolume) {
+        setVolume(parseFloat(savedVolume))
+        log.info('音量设置已恢复', { volume: parseFloat(savedVolume) })
+      }
+      if (savedTheme) {
+        setIsDarkMode(savedTheme === 'dark-theme')
+        log.info('主题设置已恢复', { theme: savedTheme })
+      }
+      if (savedPlayMeditationAudio !== null) {
+        setPlayMeditationAudio(savedPlayMeditationAudio === 'true')
+        log.info('冥想音乐设置已恢复', { playMeditationAudio: savedPlayMeditationAudio === 'true' })
+      }
+      
+      log.info('应用初始化完成')
+    } catch (error) {
+      log.error('应用初始化过程中出错', error)
+    }
+  }, [])
+
+  // 计时器逻辑
+  useEffect(() => {
+    log.debug('计时器效果更新', { isPlaying, timeRemaining })
+    let interval = null
+    
+    if (isPlaying && timeRemaining > 0) {
+      interval = setInterval(() => {
+        try {
+          setTimeRemaining(prevTime => {
+            if (prevTime <= 1) {
+              setIsPlaying(false)
+              log.info('计时完成，播放停止')
+              return 0
+            }
+            return prevTime - 1
+          })
+        } catch (error) {
+          log.error('计时器执行过程中出错', error)
+        }
+      }, 1000)
+    } else if (timeRemaining === 0) {
+      setIsPlaying(false)
+      
+      // 记录完整播放时间
+      savePlaybackRecord(timerDuration)
+      log.info('已记录播放记录', { duration: timerDuration })
+      
+      // 无论是否启用闹钟，播放结束后媒体声音都调回80%
+      if (window.setVolumeTo80Percent) {
+        window.setVolumeTo80Percent()
+        log.info('媒体音量已调回80%')
+      }
+      
+      // 如果启用了闹钟功能，播放闹钟并显示弹窗
+      if (enableAlarm) {
+        if (window.playAlarm) {
+          log.info('调用window.playAlarm方法')
+          window.playAlarm()
+        } else {
+          log.warn('window.playAlarm方法不可用')
+        }
+        // 显示闹钟弹窗
+        setShowAlarmModal(true)
+        log.info('闹钟弹窗已显示')
+      }
+    }
+    
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+        log.debug('计时器已清除')
+      }
+    }
+  }, [isPlaying, timeRemaining, enableAlarm])
+
+  const handlePlayPause = () => {
+    log.info('播放/暂停按钮被点击', { currentState: isPlaying ? '播放中' : '暂停中' })
+    try {
+      setIsPlaying(!isPlaying)
+      log.info('播放状态已切换', { newState: !isPlaying ? '播放中' : '暂停中' })
+    } catch (error) {
+      log.error('切换播放状态时出错', error)
+    }
+  }
+
+  const handleTimerChange = (minutes) => {
+    log.info('计时器时间变更', { newTime: `${minutes}分钟` })
+    try {
+      setTimerDuration(minutes)
+      setTimeRemaining(minutes * 60)
+      if (isPlaying) {
+        setIsPlaying(false)
+        log.info('计时更改时播放已暂停')
+      }
+      log.info('计时器已重置', {
+        duration: minutes,
+        timeRemaining: minutes * 60
+      })
+    } catch (error) {
+      log.error('设置计时器时间时出错', error)
+    }
+  }
+
+  const handleVolumeChange = (newVolume) => {
+    log.info('音量变更', { newVolume })
+    try {
+      setVolume(newVolume)
+      // 保存音量设置
+      localStorage.setItem('volume', newVolume)
+      log.debug('音量设置已保存到localStorage')
+    } catch (error) {
+      log.error('设置音量时出错', error)
+    }
+  }
+
+  const toggleTheme = () => {
+    log.info('切换主题设置')
+    try {
+      setIsDarkMode(!isDarkMode)
+      // 保存主题设置
+      const newTheme = !isDarkMode ? 'dark-theme' : 'light-theme'
+      localStorage.setItem('theme', newTheme)
+      log.info('主题已切换', { newTheme })
+    } catch (error) {
+      log.error('切换主题时出错', error)
+    }
+  }
+
+  const toggleMeditationAudio = () => {
+    log.info('切换冥想音频播放设置')
+    try {
+      const newValue = !playMeditationAudio
+      setPlayMeditationAudio(newValue)
+      // 保存冥想音频设置
+      localStorage.setItem('playMeditationAudio', newValue)
+      log.info('冥想音频设置已更新并保存', { playMeditationAudio: newValue })
+    } catch (error) {
+      log.error('切换冥想音频设置时出错', error)
+    }
+  }
+
+  const toggleAlarm = () => {
+    log.info('切换闹钟功能设置')
+    try {
+      setEnableAlarm(!enableAlarm)
+      log.info('闹钟功能已更新', { enableAlarm: !enableAlarm })
+    } catch (error) {
+      log.error('切换闹钟功能时出错', error)
+    }
+  }
+
+  const toggleInstructions = () => {
+    log.info('切换功能说明模态框显示状态', { currentState: showInstructions ? '打开' : '关闭' })
+    try {
+      setShowInstructions(!showInstructions)
+      log.info('功能说明模态框状态已更新', { newState: !showInstructions ? '打开' : '关闭' })
+    } catch (error) {
+      log.error('切换功能说明模态框时出错', error)
+    }
+  }
+  
+  const togglePlaybackHistory = () => {
+    log.info('切换播放记录模态框显示状态', { currentState: showPlaybackHistory ? '打开' : '关闭' })
+    try {
+      setShowPlaybackHistory(!showPlaybackHistory)
+      log.info('播放记录模态框状态已更新', { newState: !showPlaybackHistory ? '打开' : '关闭' })
+    } catch (error) {
+      log.error('切换播放记录模态框时出错', error)
+    }
+  }
+  
+  // 处理闹钟弹窗关闭
+  const handleAlarmModalClose = async () => {
+    log.info('闹钟弹窗关闭被触发')
+    try {
+      setShowAlarmModal(false)
+      
+      // 停止闹钟
+      try {
+        if (window.alarmRef && window.alarmRef.current) {
+          window.alarmRef.current.pause();
+          window.alarmRef.current.currentTime = 0;
+          log.info('闹钟音频已停止');
+        }
+      } catch (error) {
+        log.error('停止闹钟时出错', error);
+      }
+      
+      log.info('闹钟弹窗已关闭')
+    } catch (error) {
+      log.error('处理闹钟弹窗关闭时出错', error)
+    }
+  }
+
+  // 应用主题类
+  const themeClass = isDarkMode ? 'dark-theme' : 'light-theme'
+
+  return (
+    <div className={`app-container ${themeClass}`}>
+      <div className="app-content">
+        <div className="header-content">
+          <h1>睡眠冥想助手</h1>
+        </div>
+        
+        {/* 定时设置区域，包含计时器和播放控制 */}
+        <div className="timer-section">
+          <Timer 
+            duration={timerDuration} 
+            timeRemaining={timeRemaining}
+            setTimeRemaining={handleTimerChange}
+            isPlaying={isPlaying}
+          />
+          <PlayControls 
+            isPlaying={isPlaying} 
+            onPlayPause={handlePlayPause}
+          />
+        </div>
+        
+        <div className="audio-controls">
+          <div className="audio-toggle-container">
+            <label className="audio-toggle-label">
+              <input
+                type="checkbox"
+                checked={playMeditationAudio}
+                onChange={toggleMeditationAudio}
+                className="audio-toggle-checkbox"
+              />
+              <span className="audio-toggle-switch">
+                <span className="audio-toggle-slider"></span>
+              </span>
+              <span className="audio-toggle-text">播放冥想引导</span>
+            </label>
+          </div>
+          
+          <div className="audio-toggle-container">
+            <label className="audio-toggle-label">
+              <input
+                type="checkbox"
+                checked={enableAlarm}
+                onChange={toggleAlarm}
+                className="audio-toggle-checkbox"
+              />
+              <span className="audio-toggle-switch">
+                <span className="audio-toggle-slider"></span>
+              </span>
+              <span className="audio-toggle-text">结束响起闹钟</span>
+            </label>
+          </div>
+
+          <VolumeControl onVolumeChange={handleVolumeChange} />
+        </div>
+
+        <AudioPlayer 
+          isPlaying={isPlaying} 
+          volume={volume}
+          playMeditationAudio={playMeditationAudio}
+          enableAlarm={enableAlarm}
+        />
+        
+        {/* 将三个图标按钮移到最下面 */}
+        <div className="footer-buttons">
+          <button 
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={isDarkMode ? '切换至浅色模式' : '切换至深色模式'}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+          <button 
+            className="history-button"
+            onClick={togglePlaybackHistory}
+            aria-label="查看播放记录"
+          >
+            <StatisticsIcon size={20} />
+          </button>
+          <button 
+            className="info-button"
+            onClick={toggleInstructions}
+            aria-label="查看应用功能说明"
+          >
+            ℹ️
+          </button>
+        </div>
+
+        {/* 播放记录模态框 */}
+        <PlaybackHistoryViewer 
+          isOpen={showPlaybackHistory} 
+          onClose={togglePlaybackHistory}
+        />
+        
+        {/* 功能说明模态框 */}
+        {showInstructions && (
+          <div className="modal-overlay" onClick={toggleInstructions}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>应用功能说明</h2>
+              <button 
+                className="close-button"
+                onClick={toggleInstructions}
+                aria-label="关闭"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="instruction-section">
+                <h3>⏰ 定时功能</h3>
+                <p>• 可以设置30分钟、1小时、1.5小时或自定义时间</p>
+                <p>• 定时结束后会自动停止播放</p>
+                <p>• 应用默认启动时间为一小时</p>
+              </div>
+              <div className="instruction-section">
+                <h3>🎵 音频控制</h3>
+                <p>• 播放/暂停按钮控制冥想音频的播放状态</p>
+                <p>• 音量滑块可以调节音频音量</p>
+                <p>• 可选择是否播放冥想引导</p>
+                <p>• 音频播放逻辑：</p>
+                <p>  - 首先播放冥想音乐(1.mp3)，音量为30%</p>
+                <p>  - 冥想音乐播放结束后，自动切换到阿尔法音乐(2.mp3)，音量调整为10%</p>
+                <p>  - 阿尔法音乐会循环播放，直到计时结束或手动暂停</p>
+              </div>
+              <div className="instruction-section">
+                 <h3>🔔 闹钟功能</h3>
+                 <p>• 定时结束时可以选择播放闹钟提醒</p>
+                 <p>• 闹钟音量设为80%以确保您能听到</p>
+                 <p>• 无论是否启用闹钟功能，播放结束后媒体声音都会自动调回80%</p>
+               </div>
+              <div className="instruction-section">
+                <h3>🎨 主题切换</h3>
+                <p>• 支持深色/浅色主题切换</p>
+                <p>• 深色主题适合夜间使用，保护眼睛</p>
+                <p>• 应用默认为深色模式</p>
+              </div>
+              
+              <div className="instruction-section">
+                <h3>📊 播放记录</h3>
+                <p>• 自动记录每次完整播放的时间和日期</p>
+                <p>• 最多保存最近30次播放记录</p>
+                <p>• 累计显示总播放次数</p>
+                <p>• 点击 📊 按钮查看详细播放历史</p>
+              </div>
+            </div>
+          </div>
+          </div>
+        )}
+        
+        {/* 闹钟弹窗 */}
+        <AlarmModal 
+          isVisible={showAlarmModal} 
+          onClose={handleAlarmModalClose} 
+        />
+      </div>
+    </div>
+  )
+}
+
+export default App

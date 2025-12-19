@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>睡眠冥想助手</title>
+    <link rel="stylesheet" href="./assets/index-avRvOFZq.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // 禁用模块加载，使用传统脚本加载方式
+      console.log("开始加载应用");
+      
+      // 创建一个简单的加载指示器
+      const rootElement = document.getElementById('root');
+      rootElement.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:18px;">正在加载应用...</div>';
+      
+      // 尝试加载主脚本
+      const script = document.createElement('script');
+      script.src = './assets/index-CBy9MmSM.js';
+      script.onerror = function() {
+        console.error("无法加载主脚本");
+        rootElement.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;font-size:18px;color:red;">加载失败，请重试</div>';
+      };
+      script.onload = function() {
+        console.log("主脚本加载完成");
+      };
+      document.body.appendChild(script);
+    </script>
+  </body>
+</html>

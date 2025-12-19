@@ -1,0 +1,190 @@
+.timer-container {
+  border-radius: 15px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark-theme .timer-container {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.light-theme .timer-container {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e0e0e0;
+}
+
+.timer-display {
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark-theme .timer-display {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.light-theme .timer-display {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.time {
+  font-size: 3rem;
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  transition: color 0.3s ease;
+}
+
+.dark-theme .time {
+  color: #e0e0e0;
+}
+
+.light-theme .time {
+  color: #4a6fa5;
+}
+
+.timer-settings h3 {
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.dark-theme .timer-settings h3 {
+  color: #e0e0e0;
+}
+
+.timer-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.timer-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.timer-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.timer-btn:active {
+  transform: translateY(0);
+}
+
+.timer-btn.active {
+  background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
+  box-shadow: 0 4px 15px rgba(143, 148, 251, 0.5);
+}
+
+.custom-timer {
+  margin-top: 20px;
+}
+
+.custom-input-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.custom-input-form input {
+  flex: 1;
+  padding: 10px 15px;
+  border-radius: 25px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.dark-theme .custom-input-form input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: #e0e0e0;
+}
+
+.light-theme .custom-input-form input {
+  background: white;
+  border: 2px solid #ddd;
+  color: #333;
+}
+
+.custom-input-form input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.custom-submit-btn {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.custom-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+}
+
+.custom-submit-btn:active {
+  transform: translateY(0);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .timer-display {
+    padding: 15px;
+  }
+  
+  .time {
+    font-size: 2.5rem;
+  }
+  
+  .timer-buttons {
+    gap: 10px;
+  }
+  
+  .timer-btn {
+    padding: 10px 20px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .timer-container {
+    padding: 20px;
+  }
+  
+  .time {
+    font-size: 2rem;
+  }
+  
+  .custom-input-form {
+    flex-direction: column;
+  }
+  
+  .custom-input-form input {
+    width: 100%;
+    max-width: 200px;
+  }
+}
