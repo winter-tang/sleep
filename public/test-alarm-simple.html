@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>闹钟功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #log {
+            background: #f0f0f0;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+<body>
+    <h1>闹钟功能测试</h1>
+    
+    <button id="testAlarm">测试闹钟</button>
+    <button id="stopAlarm">停止闹钟</button>
+    <button id="clearLog">清空日志</button>
+    
+    <div id="log"></div>
+
+    <script>
+        // 创建日志元素
+        const logDiv = document.getElementById('log');
+        
+        // 日志函数
+        function log(message) {
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${time}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        // 创建闹钟音频对象
+        let alarmAudio = null;
+        let userInteracted = false;
+        
+        // 初始化闹钟
+        function initAlarm() {
+            try {
+                alarmAudio = new Audio('/sounds/3.mp3');
+                alarmAudio.volume = 0.8;
+                alarmAudio.preload = 'auto';
+                
+                // 添加事件监听器
+                alarmAudio.addEventListener('loadstart', () => log('开始加载闹钟音频'));
+                alarmAudio.addEventListener('loadeddata', () => log('闹钟音频数据加载完成'));
+                alarmAudio.addEventListener('canplay', () => log('闹钟音频可以播放'));
+                alarmAudio.addEventListener('play', () => log('闹钟开始播放'));
+                alarmAudio.addEventListener('pause', () => log('闹钟暂停播放'));
+                alarmAudio.addEventListener('ended', () => log('闹钟播放结束'));
+                alarmAudio.addEventListener('error', (e) => {
+                    log(`闹钟音频错误: ${e.message || '未知错误'}`);
+                    log(`错误代码: ${e.target.error ? e.target.error.code : '未知'}`);
+                    log(`网络状态: ${e.target.networkState}`);
+                    log(`就绪状态: ${e.target.readyState}`);
+                });
+                
+                log('闹钟初始化成功');
+                return true;
+            } catch (error) {
+                log(`闹钟初始化失败: ${error.message}`);
+                return false;
+            }
+        }
+        
+        // 测试闹钟
+        function testAlarm() {
+            log('开始测试闹钟播放...');
+            
+            if (!userInteracted) {
+                log('警告: 用户尚未交互，音频播放可能被浏览器阻止');
+            }
+            
+            if (!alarmAudio) {
+                if (!initAlarm()) {
+                    log('闹钟初始化失败，无法测试');
+                    return;
+                }
+            }
+            
+            log(`当前音频状态: 已加载=${alarmAudio.readyState >= 2}, 暂停=${alarmAudio.paused}, 当前时间=${alarmAudio.currentTime}s`);
+            
+            // 重置音频到开始位置
+            alarmAudio.currentTime = 0;
+            
+            // 尝试播放
+            const playPromise = alarmAudio.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    log('闹钟播放成功！');
+                }).catch(error => {
+                    log(`闹钟播放失败: ${error.message}`);
+                    log(`错误名称: ${error.name}`);
+                    
+                    // 尝试替代方案1: 创建新的音频元素
+                    log('尝试替代方案1: 创建新的音频元素');
+                    try {
+                        const tempAlarm = new Audio('/sounds/3.mp3');
+                        tempAlarm.volume = 0.8;
+                        tempAlarm.play().then(() => {
+                            log('替代方案1播放成功！');
+                        }).catch(err => {
+                            log(`替代方案1失败: ${err.message}`);
+                            
+                            // 尝试替代方案2: 先加载再播放
+                            log('尝试替代方案2: 先加载再播放');
+                            const tempAlarm2 = new Audio();
+                            tempAlarm2.src = '/sounds/3.mp3';
+                            tempAlarm2.volume = 0.8;
+                            
+                            tempAlarm2.addEventListener('canplay', () => {
+                                log('替代方案2音频加载完成，尝试播放');
+                                tempAlarm2.play().then(() => {
+                                    log('替代方案2播放成功！');
+                                }).catch(err2 => {
+                                    log(`替代方案2也失败: ${err2.message}`);
+                                    log('所有播放尝试均失败，可能是浏览器策略限制');
+                                });
+                            });
+                            
+                            tempAlarm2.load();
+                        });
+                    } catch (e) {
+                        log(`创建替代音频元素失败: ${e.message}`);
+                    }
+                });
+            }
+        }
+        
+        // 停止闹钟
+        function stopAlarm() {
+            log('停止闹钟...');
+            
+            if (alarmAudio) {
+                alarmAudio.pause();
+                alarmAudio.currentTime = 0;
+                log('闹钟已停止');
+            } else {
+                log('闹钟未初始化');
+            }
+        }
+        
+        // 清空日志
+        function clearLog() {
+            logDiv.innerHTML = '';
+        }
+        
+        // 添加事件监听器
+        document.getElementById('testAlarm').addEventListener('click', testAlarm);
+        document.getElementById('stopAlarm').addEventListener('click', stopAlarm);
+        document.getElementById('clearLog').addEventListener('click', clearLog);
+        
+        // 页面加载时初始化
+        window.addEventListener('load', () => {
+            log('页面加载完成');
+            initAlarm();
+        });
+        
+        // 检测用户交互
+        document.addEventListener('click', () => {
+            if (!userInteracted) {
+                userInteracted = true;
+                log('检测到用户交互，音频播放已启用');
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>

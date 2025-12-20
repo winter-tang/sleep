@@ -28,9 +28,13 @@ const AlarmModal = ({ isVisible, onClose }) => {
         clearInterval(interval);
         // 停止闹钟播放
         try {
-          if (window.alarmRef && window.alarmRef.current) {
-            log.info('AlarmModal: 停止闹钟播放');
+          if (window.stopAlarm) {
+            log.info('AlarmModal: 调用window.stopAlarm()方法');
+            window.stopAlarm();
+          } else if (window.alarmRef && window.alarmRef.current) {
+            log.info('AlarmModal: 直接停止闹钟播放');
             window.alarmRef.current.pause();
+            window.alarmRef.current.currentTime = 0;
           }
         } catch (error) {
           log.error('AlarmModal: 停止闹钟时出错', error);

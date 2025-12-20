@@ -4,6 +4,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
   const audioRef1 = useRef(null)
   const audioRef2 = useRef(null)
   const alarmRef = useRef(null)
+  const tempAlarmRef = useRef(null) // 添加临时闹钟音频引用
   const [audioInitialized, setAudioInitialized] = useState(false)
   const [isAndroid, setIsAndroid] = useState(false)
   const [userInteracted, setUserInteracted] = useState(false)
@@ -54,12 +55,27 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
     const audioPath2 = isAndroid ? './sounds/2.mp3' : '/sounds/2.mp3'
     const audioPath3 = isAndroid ? './sounds/3.mp3' : '/sounds/3.mp3'
     
-    window.logManager.info('音频路径配置:', { audioPath1, audioPath2, audioPath3 })
+    // 在Web环境中，确保路径正确
+    const webAudioPath1 = '/sounds/1.mp3'
+    const webAudioPath2 = '/sounds/2.mp3'
+    const webAudioPath3 = '/sounds/3.mp3'
+    
+    // 使用适合当前环境的路径
+    const finalAudioPath1 = isAndroid ? audioPath1 : webAudioPath1
+    const finalAudioPath2 = isAndroid ? audioPath2 : webAudioPath2
+    const finalAudioPath3 = isAndroid ? audioPath3 : webAudioPath3
+    
+    window.logManager.info('音频路径配置:', { 
+      finalAudioPath1, 
+      finalAudioPath2, 
+      finalAudioPath3,
+      isAndroid 
+    })
     
     // 创建音频元素
-          audioRef1.current = new Audio(audioPath1)
-          audioRef2.current = new Audio(audioPath2)
-          alarmRef.current = new Audio(audioPath3)
+          audioRef1.current = new Audio(finalAudioPath1)
+          audioRef2.current = new Audio(finalAudioPath2)
+          alarmRef.current = new Audio(finalAudioPath3)
           
           // 设置基本属性
           audioRef1.current.volume = 0.3
@@ -86,7 +102,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         error: e, 
         code: e.target.error ? e.target.error.code : 'unknown',
         message: e.target.error ? e.target.error.message : 'unknown error',
-        path: audioPath1,
+        path: finalAudioPath1,
         isAndroid: isAndroid,
         networkState: e.target.networkState,
         readyState: e.target.readyState
@@ -98,7 +114,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         error: e, 
         code: e.target.error ? e.target.error.code : 'unknown',
         message: e.target.error ? e.target.error.message : 'unknown error',
-        path: audioPath2,
+        path: finalAudioPath2,
         networkState: e.target.networkState,
         readyState: e.target.readyState
       })
@@ -109,7 +125,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         error: e, 
         code: e.target.error ? e.target.error.code : 'unknown',
         message: e.target.error ? e.target.error.message : 'unknown error',
-        path: audioPath3,
+        path: finalAudioPath3,
         networkState: e.target.networkState,
         readyState: e.target.readyState
       })
@@ -370,10 +386,14 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
       
       // 测试1.mp3
       try {
-        await audioRef1.current.play()
-        window.logManager.info('1.mp3测试播放成功')
-        audioRef1.current.pause()
-        audioRef1.current.currentTime = 0
+        if (!userInteracted) {
+          window.logManager.warn('用户尚未交互，跳过1.mp3测试播放')
+        } else {
+          await audioRef1.current.play()
+          window.logManager.info('1.mp3测试播放成功')
+          audioRef1.current.pause()
+          audioRef1.current.currentTime = 0
+        }
       } catch (err) {
         window.logManager.error('1.mp3测试播放失败', {
           error: err,
@@ -384,10 +404,14 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
       
       // 测试2.mp3
       try {
-        await audioRef2.current.play()
-        window.logManager.info('2.mp3测试播放成功')
-        audioRef2.current.pause()
-        audioRef2.current.currentTime = 0
+        if (!userInteracted) {
+          window.logManager.warn('用户尚未交互，跳过2.mp3测试播放')
+        } else {
+          await audioRef2.current.play()
+          window.logManager.info('2.mp3测试播放成功')
+          audioRef2.current.pause()
+          audioRef2.current.currentTime = 0
+        }
       } catch (err) {
         window.logManager.error('2.mp3测试播放失败', {
           error: err,
@@ -398,10 +422,14 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
       
       // 测试3.mp3
       try {
-        await alarmRef.current.play()
-        window.logManager.info('3.mp3测试播放成功')
-        alarmRef.current.pause()
-        alarmRef.current.currentTime = 0
+        if (!userInteracted) {
+          window.logManager.warn('用户尚未交互，跳过3.mp3测试播放')
+        } else {
+          await alarmRef.current.play()
+          window.logManager.info('3.mp3测试播放成功')
+          alarmRef.current.pause()
+          alarmRef.current.currentTime = 0
+        }
       } catch (err) {
         window.logManager.error('3.mp3测试播放失败', {
           error: err,
@@ -476,35 +504,132 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         window.AlarmAudioBridge.playAlarm('./sounds/3.mp3', true)
       } else {
         // 停止其他音频
-        audioRef1.current.pause()
-        audioRef2.current.pause()
+        if (audioRef1.current) audioRef1.current.pause()
+        if (audioRef2.current) audioRef2.current.pause()
         
         // 播放闹钟
         window.logManager.info('准备播放3.mp3', {
-          currentTime: alarmRef.current.currentTime,
-          paused: alarmRef.current.paused,
-          readyState: alarmRef.current.readyState,
-          networkState: alarmRef.current.networkState,
+          currentTime: alarmRef.current ? alarmRef.current.currentTime : 'N/A',
+          paused: alarmRef.current ? alarmRef.current.paused : 'N/A',
+          readyState: alarmRef.current ? alarmRef.current.readyState : 'N/A',
+          networkState: alarmRef.current ? alarmRef.current.networkState : 'N/A',
           userInteracted: userInteracted
         })
         
         if (!userInteracted) {
-          window.logManager.error('用户尚未交互，无法播放闹钟。请先点击屏幕任意位置。')
-          return
+          window.logManager.warn('用户尚未交互，尝试创建临时音频元素播放闹钟')
+          // 如果用户尚未交互，尝试创建新的音频元素来播放闹钟
+          try {
+            // 停止之前的临时音频（如果存在）
+            if (tempAlarmRef.current) {
+              tempAlarmRef.current.pause()
+              tempAlarmRef.current.currentTime = 0
+            }
+            
+            tempAlarmRef.current = new Audio(finalAudioPath3)
+            tempAlarmRef.current.volume = 0.8
+            tempAlarmRef.current.play().then(() => {
+              window.logManager.info('临时闹钟音频播放成功')
+            }).catch(err => {
+              window.logManager.error('临时闹钟音频播放失败', {
+                error: err,
+                name: err.name,
+                message: err.message
+              })
+            })
+          } catch (err) {
+            window.logManager.error('创建临时闹钟音频失败', {
+              error: err,
+              name: err.name,
+              message: err.message
+            })
+          }
         }
         
-        alarmRef.current.currentTime = 0
-        alarmRef.current.play().catch(err => {
-          window.logManager.error('播放闹钟失败', {
-            error: err,
-            name: err.name,
-            message: err.message,
-            currentTime: alarmRef.current.currentTime,
-            paused: alarmRef.current.paused,
-            readyState: alarmRef.current.readyState,
-            networkState: alarmRef.current.networkState
-          })
-        })
+        if (alarmRef.current) {
+          // 重置音频状态
+          alarmRef.current.currentTime = 0
+          
+          // 确保音频已加载
+          if (alarmRef.current.readyState < 2) {
+            window.logManager.info('闹钟音频未完全加载，等待加载完成')
+            alarmRef.current.load()
+            
+            // 等待加载完成后再播放
+            const waitForCanPlay = () => {
+              return new Promise((resolve) => {
+                if (alarmRef.current.readyState >= 2) {
+                  resolve()
+                } else {
+                  alarmRef.current.addEventListener('canplay', resolve, { once: true })
+                }
+              })
+            }
+            
+            waitForCanPlay().then(() => {
+              window.logManager.info('闹钟音频加载完成，开始播放')
+              alarmRef.current.currentTime = 0
+              alarmRef.current.play().catch(err => {
+                window.logManager.error('播放闹钟失败', {
+                  error: err,
+                  name: err.name,
+                  message: err.message,
+                  currentTime: alarmRef.current.currentTime,
+                  paused: alarmRef.current.paused,
+                  readyState: alarmRef.current.readyState,
+                  networkState: alarmRef.current.networkState
+                })
+                
+                // 如果第一次播放失败，尝试重新加载并再次播放
+                window.logManager.info('尝试重新加载并再次播放闹钟')
+                alarmRef.current.load()
+                setTimeout(() => {
+                  if (alarmRef.current) {
+                    alarmRef.current.currentTime = 0
+                    alarmRef.current.play().catch(retryErr => {
+                      window.logManager.error('重试播放闹钟仍然失败', {
+                        error: retryErr,
+                        name: retryErr.name,
+                        message: retryErr.message
+                      })
+                    })
+                  }
+                }, 500)
+              })
+            })
+          } else {
+            // 音频已加载，直接播放
+            alarmRef.current.play().catch(err => {
+              window.logManager.error('播放闹钟失败', {
+                error: err,
+                name: err.name,
+                message: err.message,
+                currentTime: alarmRef.current.currentTime,
+                paused: alarmRef.current.paused,
+                readyState: alarmRef.current.readyState,
+                networkState: alarmRef.current.networkState
+              })
+              
+              // 如果第一次播放失败，尝试重新加载并再次播放
+              window.logManager.info('尝试重新加载并再次播放闹钟')
+              alarmRef.current.load()
+              setTimeout(() => {
+                if (alarmRef.current) {
+                  alarmRef.current.currentTime = 0
+                  alarmRef.current.play().catch(retryErr => {
+                    window.logManager.error('重试播放闹钟仍然失败', {
+                      error: retryErr,
+                      name: retryErr.name,
+                      message: retryErr.message
+                    })
+                  })
+                }
+              }, 500)
+            })
+          }
+        } else {
+          window.logManager.error('闹钟音频引用不存在')
+        }
       }
     }
     
@@ -516,10 +641,31 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
       if (isAndroid && window.AlarmAudioBridge) {
         window.AlarmAudioBridge.stopAlarm()
       } else {
-        alarmRef.current.pause()
-        alarmRef.current.currentTime = 0
+        // 停止主要闹钟音频
+        if (alarmRef.current) {
+          alarmRef.current.pause()
+          alarmRef.current.currentTime = 0
+          window.logManager.info('主要闹钟音频已停止')
+        }
+        
+        // 停止临时闹钟音频
+        if (tempAlarmRef.current) {
+          tempAlarmRef.current.pause()
+          tempAlarmRef.current.currentTime = 0
+          tempAlarmRef.current = null
+          window.logManager.info('临时闹钟音频已停止')
+        }
       }
     }
+    
+    // 暴露测试闹钟方法
+    window.testAlarm = () => {
+      window.logManager.info('测试闹钟播放')
+      window.playAlarm()
+    }
+    
+    // 暴露闹钟引用到全局，方便AlarmModal访问
+    window.alarmRef = alarmRef
   }, [audioInitialized, isAndroid])
 
   return (

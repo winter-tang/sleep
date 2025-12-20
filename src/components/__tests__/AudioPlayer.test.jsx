@@ -22,6 +22,7 @@ describe('AudioPlayer', () => {
       paused: true,
       play: jest.fn().mockResolvedValue(),
       pause: jest.fn(),
+      load: jest.fn(),
       addEventListener: jest.fn(),
       removeEventListener: jest.fn()
     }
@@ -33,6 +34,7 @@ describe('AudioPlayer', () => {
       paused: true,
       play: jest.fn().mockResolvedValue(),
       pause: jest.fn(),
+      load: jest.fn(),
       addEventListener: jest.fn(),
       removeEventListener: jest.fn()
     }
@@ -44,6 +46,7 @@ describe('AudioPlayer', () => {
       paused: true,
       play: jest.fn().mockResolvedValue(),
       pause: jest.fn(),
+      load: jest.fn(),
       addEventListener: jest.fn(),
       removeEventListener: jest.fn()
     }
@@ -62,6 +65,7 @@ describe('AudioPlayer', () => {
         paused: true,
         play: jest.fn().mockResolvedValue(),
         pause: jest.fn(),
+        load: jest.fn(),
         addEventListener: jest.fn(),
         removeEventListener: jest.fn()
       }
@@ -124,6 +128,12 @@ describe('AudioPlayer', () => {
     // 初始状态不应该播放
     expect(mockAudio1.play).not.toHaveBeenCalled()
     
+    // 模拟用户交互
+    act(() => {
+      // 触发用户交互事件
+      document.dispatchEvent(new Event('click'))
+    })
+    
     // 更新为播放状态
     rerender(<AudioPlayer isPlaying={true} />)
     
@@ -132,6 +142,17 @@ describe('AudioPlayer', () => {
   
   it('应该在isPlaying为false时暂停音频', () => {
     const { rerender } = render(<AudioPlayer isPlaying={true} />)
+    
+    // 模拟用户交互
+    act(() => {
+      // 触发用户交互事件
+      document.dispatchEvent(new Event('click'))
+    })
+    
+    // 等待组件初始化
+    act(() => {
+      // 空的act调用，等待useEffect执行
+    })
     
     // 播放状态
     expect(mockAudio1.play).toHaveBeenCalled()
@@ -261,7 +282,16 @@ describe('AudioPlayer', () => {
   })
   
   it('应该在1.mp3播放结束后播放2.mp3', () => {
-    render(<AudioPlayer />)
+    // 模拟用户交互
+    act(() => {
+      // 触发用户交互事件
+      document.dispatchEvent(new Event('click'))
+    })
+    
+    const { rerender } = render(<AudioPlayer isPlaying={false} />)
+    
+    // 更新为播放状态
+    rerender(<AudioPlayer isPlaying={true} />)
     
     // 获取ended事件的回调函数
     const endedCallback = mockAudio1.addEventListener.mock.calls.find(
@@ -286,5 +316,70 @@ describe('AudioPlayer', () => {
     expect(mockAudio1.pause).toHaveBeenCalled()
     expect(mockAudio2.pause).toHaveBeenCalled()
     expect(mockAlarm.pause).toHaveBeenCalled()
+  })
+  
+  it('应该暴露测试闹钟方法', () => {
+    render(<AudioPlayer />)
+    
+    expect(window.testAlarm).toBeDefined()
+    expect(typeof window.testAlarm).toBe('function')
+  })
+  
+  it('应该在播放闹钟失败时重试', () => {
+    // 设置非Android环境
+    Object.defineProperty(window, 'navigator', {
+      value: {
+        userAgent: 'iphone',
+      },
+      writable: true,
+    })
+    
+    // 模拟播放失败
+    mockAlarm.play.mockRejectedValueOnce(new Error('播放失败'))
+    
+    render(<AudioPlayer />)
+    
+    // 等待组件初始化
+    act(() => {
+      // 空的act调用，等待useEffect执行
+    })
+    
+    // 调用闹钟播放方法
+    act(() => {
+      window.playAlarm()
+    })
+    
+    // 由于setTimeout是异步的，我们需要使用jest.useFakeTimers
+    jest.useFakeTimers()
+    
+    // 快进时间，触发setTimeout
+    act(() => {
+      jest.advanceTimersByTime(500)
+    })
+    
+    expect(mockAlarm.play).toHaveBeenCalled()
+    expect(mockAlarm.load).toHaveBeenCalled()
+    
+    // 恢复真实定时器
+    jest.useRealTimers()
+  })
+  
+  it('应该在用户未交互时尝试播放闹钟', () => {
+    // 设置非Android环境
+    Object.defineProperty(window, 'navigator', {
+      value: {
+        userAgent: 'iphone',
+      },
+      writable: true,
+    })
+    
+    render(<AudioPlayer />)
+    
+    // 调用闹钟播放方法，即使没有用户交互也应该尝试播放
+    act(() => {
+      window.playAlarm()
+    })
+    
+    expect(mockAlarm.play).toHaveBeenCalled()
   })
 })
