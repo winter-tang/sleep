@@ -1,0 +1,270 @@
+import { useRef, useEffect, useState } from 'react'
+
+const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enableAlarm = false }) => {
+  const audioRef1 = useRef(null)
+  const audioRef2 = useRef(null)
+  const alarmRef = useRef(null)
+  const [audioInitialized, setAudioInitialized] = useState(false)
+  const [isAndroid, setIsAndroid] = useState(false)
+
+  // 检测是否在Android环境中
+  useEffect(() => {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera
+    if (/android/i.test(userAgent)) {
+      setIsAndroid(true)
+      window.logManager.info('检测到Android环境')
+    }
+  }, [])
+
+  // 初始化音频
+  useEffect(() => {
+    window.logManager.info('初始化音频播放器')
+    window.logManager.info('平台检测结果:', { isAndroid, userAgent: navigator.userAgent })
+    
+    // 根据平台选择不同的音频路径
+    const audioPath1 = isAndroid ? './sounds/1.mp3' : '/sounds/1.mp3'
+    const audioPath2 = isAndroid ? './sounds/2.mp3' : '/sounds/2.mp3'
+    const audioPath3 = isAndroid ? './sounds/3.mp3' : '/sounds/3.mp3'
+    
+    window.logManager.info('音频路径配置:', { audioPath1, audioPath2, audioPath3 })
+    
+    // 创建音频元素
+    audioRef1.current = new Audio(audioPath1)
+    audioRef2.current = new Audio(audioPath2)
+    alarmRef.current = new Audio(audioPath3)
+    
+    // 设置基本属性
+    audioRef1.current.volume = 0.3
+    audioRef2.current.volume = 0.1
+    audioRef2.current.loop = true
+    alarmRef.current.volume = 0.5
+    
+    window.logManager.info('音频元素创建完成，设置音量:', {
+      audio1Volume: audioRef1.current.volume,
+      audio2Volume: audioRef2.current.volume,
+      alarmVolume: alarmRef.current.volume
+    })
+    
+    // 添加错误处理
+    audioRef1.current.addEventListener('error', (e) => {
+      window.logManager.error('1.mp3 加载失败', { 
+        error: e, 
+        code: e.target.error ? e.target.error.code : 'unknown',
+        message: e.target.error ? e.target.error.message : 'unknown error',
+        path: audioPath1,
+        isAndroid: isAndroid,
+        networkState: e.target.networkState,
+        readyState: e.target.readyState
+      })
+    })
+    
+    audioRef2.current.addEventListener('error', (e) => {
+      window.logManager.error('2.mp3 加载失败', { 
+        error: e, 
+        code: e.target.error ? e.target.error.code : 'unknown',
+        message: e.target.error ? e.target.error.message : 'unknown error',
+        path: audioPath2,
+        networkState: e.target.networkState,
+        readyState: e.target.readyState
+      })
+    })
+    
+    alarmRef.current.addEventListener('error', (e) => {
+      window.logManager.error('3.mp3 加载失败', { 
+        error: e, 
+        code: e.target.error ? e.target.error.code : 'unknown',
+        message: e.target.error ? e.target.error.message : 'unknown error',
+        path: audioPath3,
+        networkState: e.target.networkState,
+        readyState: e.target.readyState
+      })
+    })
+    
+    // 添加加载状态监听
+    audioRef1.current.addEventListener('loadeddata', () => {
+      window.logManager.info('1.mp3 数据加载完成')
+    })
+    
+    audioRef1.current.addEventListener('canplay', () => {
+      window.logManager.info('1.mp3 可以播放')
+    })
+    
+    audioRef2.current.addEventListener('loadeddata', () => {
+      window.logManager.info('2.mp3 数据加载完成')
+    })
+    
+    audioRef2.current.addEventListener('canplay', () => {
+      window.logManager.info('2.mp3 可以播放')
+    })
+    
+    alarmRef.current.addEventListener('loadeddata', () => {
+      window.logManager.info('3.mp3 数据加载完成')
+    })
+    
+    alarmRef.current.addEventListener('canplay', () => {
+      window.logManager.info('3.mp3 可以播放')
+    })
+    
+    // 添加播放状态监听
+    audioRef1.current.addEventListener('play', () => {
+      window.logManager.info('1.mp3 开始播放')
+    })
+    
+    audioRef1.current.addEventListener('pause', () => {
+      window.logManager.info('1.mp3 暂停播放')
+    })
+    
+    audioRef1.current.addEventListener('ended', () => {
+      window.logManager.info('1.mp3 播放结束，开始播放2.mp3')
+      audioRef2.current.currentTime = 0
+      audioRef2.current.play().catch(err => {
+        window.logManager.error('播放2.mp3失败', err)
+      })
+    })
+    
+    audioRef2.current.addEventListener('play', () => {
+      window.logManager.info('2.mp3 开始播放')
+    })
+    
+    audioRef2.current.addEventListener('pause', () => {
+      window.logManager.info('2.mp3 暂停播放')
+    })
+    
+    alarmRef.current.addEventListener('play', () => {
+      window.logManager.info('3.mp3 开始播放')
+    })
+    
+    alarmRef.current.addEventListener('pause', () => {
+      window.logManager.info('3.mp3 暂停播放')
+    })
+    
+    setAudioInitialized(true)
+    window.logManager.info('音频初始化完成')
+    
+    return () => {
+      // 清理
+      if (audioRef1.current) {
+        audioRef1.current.pause()
+        audioRef1.current = null
+      }
+      if (audioRef2.current) {
+        audioRef2.current.pause()
+        audioRef2.current = null
+      }
+      if (alarmRef.current) {
+        alarmRef.current.pause()
+        alarmRef.current = null
+      }
+    }
+  }, [isAndroid])
+
+  // 处理播放/暂停
+  useEffect(() => {
+    if (!audioInitialized) return
+    
+    window.logManager.info(`播放状态变化: ${isPlaying}`)
+    
+    if (isPlaying) {
+      // 开始播放
+      if (playMeditationAudio) {
+        window.logManager.info('准备播放1.mp3', {
+          currentTime: audioRef1.current.currentTime,
+          paused: audioRef1.current.paused,
+          readyState: audioRef1.current.readyState,
+          networkState: audioRef1.current.networkState
+        })
+        
+        audioRef1.current.currentTime = 0
+        audioRef2.current.currentTime = 0
+        audioRef1.current.play()
+          .then(() => {
+            window.logManager.info('1.mp3播放成功')
+          })
+          .catch(err => {
+            window.logManager.error('播放1.mp3失败', {
+              error: err,
+              name: err.name,
+              message: err.message,
+              currentTime: audioRef1.current.currentTime,
+              paused: audioRef1.current.paused,
+              readyState: audioRef1.current.readyState,
+              networkState: audioRef1.current.networkState
+            })
+          })
+      }
+    } else {
+      // 暂停所有音频
+      audioRef1.current.pause()
+      audioRef2.current.pause()
+    }
+  }, [isPlaying, playMeditationAudio, audioInitialized])
+
+  // 更新音量
+  useEffect(() => {
+    if (!audioInitialized) return
+    
+    if (audioRef1.current) {
+      audioRef1.current.volume = volume * 0.3 // 冥想音乐使用30%音量
+    }
+    if (audioRef2.current) {
+      audioRef2.current.volume = volume * 0.1 // 阿尔法音乐使用10%音量
+    }
+  }, [volume, audioInitialized])
+
+  // 播放闹钟
+  useEffect(() => {
+    if (!audioInitialized) return
+    
+    // 暴露闹钟播放方法到window对象
+    window.playAlarm = () => {
+      window.logManager.info('播放闹钟')
+      
+      // 在Android环境中使用原生接口
+      if (isAndroid && window.AlarmAudioBridge) {
+        window.AlarmAudioBridge.playAlarm('./sounds/3.mp3', true)
+      } else {
+        // 停止其他音频
+        audioRef1.current.pause()
+        audioRef2.current.pause()
+        
+        // 播放闹钟
+        window.logManager.info('准备播放3.mp3', {
+          currentTime: alarmRef.current.currentTime,
+          paused: alarmRef.current.paused,
+          readyState: alarmRef.current.readyState,
+          networkState: alarmRef.current.networkState
+        })
+        
+        alarmRef.current.currentTime = 0
+        alarmRef.current.play().catch(err => {
+          window.logManager.error('播放闹钟失败', {
+            error: err,
+            name: err.name,
+            message: err.message,
+            currentTime: alarmRef.current.currentTime,
+            paused: alarmRef.current.paused,
+            readyState: alarmRef.current.readyState,
+            networkState: alarmRef.current.networkState
+          })
+        })
+      }
+    }
+    
+    // 暴露停止闹钟方法
+    window.stopAlarm = () => {
+      window.logManager.info('停止闹钟')
+      
+      // 在Android环境中使用原生接口
+      if (isAndroid && window.AlarmAudioBridge) {
+        window.AlarmAudioBridge.stopAlarm()
+      } else {
+        alarmRef.current.pause()
+        alarmRef.current.currentTime = 0
+      }
+    }
+  }, [audioInitialized, isAndroid])
+
+  return null // 组件不渲染任何内容
+}
+
+export default AudioPlayer
