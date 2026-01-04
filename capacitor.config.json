@@ -1,5 +1,5 @@
 {
-  "appId": "com.example.sleepmeditation",
+  "appId": "com.sleepmeditation",
   "appName": "睡眠冥想助手",
   "webDir": "dist",
   "android": {

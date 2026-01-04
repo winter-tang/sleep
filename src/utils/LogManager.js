@@ -9,7 +9,7 @@ class LogManager {
       WARN: 2,
       ERROR: 3
     };
-    this.currentLogLevel = this.logLevels.DEBUG; // 当前日志级别
+    this.currentLogLevel = this.logLevels.INFO; // 当前日志级别，默认设置为INFO，避免过多调试日志
   }
 
   // 记录日志

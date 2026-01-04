@@ -1,14 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import './VolumeControl.css'
 
 const VolumeControl = ({ onVolumeChange }) => {
   const [volume, setVolume] = useState(50) // 0-100
   const [isMuted, setIsMuted] = useState(false)
   const [tempVolume, setTempVolume] = useState(50)
+  const lastVolumeRef = useRef(null)
 
   useEffect(() => {
     if (onVolumeChange) {
-      onVolumeChange(isMuted ? 0 : volume / 100)
+      const currentVolume = isMuted ? 0 : volume / 100
+      // 只有音量实际发生变化时才调用回调，避免无限循环
+      if (lastVolumeRef.current !== currentVolume) {
+        lastVolumeRef.current = currentVolume
+        onVolumeChange(currentVolume)
+      }
     }
   }, [volume, isMuted, onVolumeChange])
 

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>默认音频测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .audio-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .audio-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .audio-item.playing {
+            background-color: #e8f5e9;
+            border-color: #4caf50;
+        }
+        .audio-item.error {
+            background-color: #ffebee;
+            border-color: #f44336;
+        }
+        .audio-label {
+            flex: 1;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        .audio-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.stop {
+            background-color: #f44336;
+        }
+        button.stop:hover {
+            background-color: #d32f2f;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status-panel {
+            margin-top: 30px;
+            padding: 15px;
+            border-radius: 8px;
+            background-color: #f0f0f0;
+        }
+        .status-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .status-content {
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .error-popup {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 14px;
+            max-width: 80%;
+            text-align: center;
+        }
+        .platform-info {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #e3f2fd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>默认音频测试</h1>
+        
+        <div class="platform-info" id="platformInfo">
+            检测平台中...
+        </div>
+        
+        <div class="audio-controls">
+            <div class="audio-item" id="audio1Item">
+                <div class="audio-label">1.mp3 (引导音乐)</div>
+                <div class="audio-buttons">
+                    <button id="play1Btn" onclick="playAudio1()">播放</button>
+                    <button id="stop1Btn" onclick="stopAudio1()" class="stop" disabled>停止</button>
+                </div>
+            </div>
+            
+            <div class="audio-item" id="audio2Item">
+                <div class="audio-label">2.mp3 (背景音乐)</div>
+                <div class="audio-buttons">
+                    <button id="play2Btn" onclick="playAudio2()">播放</button>
+                    <button id="stop2Btn" onclick="stopAudio2()" class="stop" disabled>停止</button>
+                </div>
+            </div>
+            
+            <div class="audio-item" id="audio3Item">
+                <div class="audio-label">alarm.mp3 (闹钟)</div>
+                <div class="audio-buttons">
+                    <button id="play3Btn" onclick="playAlarm()">播放</button>
+                    <button id="stop3Btn" onclick="stopAlarm()" class="stop" disabled>停止</button>
+                </div>
+            </div>
+            
+            <div class="audio-item" id="comboItem">
+                <div class="audio-label">组合播放 (1.mp3 + 2.mp3)</div>
+                <div class="audio-buttons">
+                    <button id="playComboBtn" onclick="playCombo()">播放</button>
+                    <button id="stopAllBtn" onclick="stopAll()" class="stop">停止全部</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-panel">
+            <div class="status-title">状态日志</div>
+            <div class="status-content" id="statusLog">等待操作...</div>
+        </div>
+    </div>
+    
+    <div id="errorPopup" class="error-popup" style="display: none;"></div>
+
+    <script>
+        // 初始化日志管理器
+        const logManager = {
+            log: function(level, message, data) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = `[${timestamp}] [${level}] ${message}`;
+                console.log(logEntry, data || '');
+                
+                const statusLog = document.getElementById('statusLog');
+                statusLog.textContent += logEntry + '\n';
+                if (data) {
+                    statusLog.textContent += JSON.stringify(data, null, 2) + '\n';
+                }
+                statusLog.scrollTop = statusLog.scrollHeight;
+            },
+            info: function(message, data) { this.log('INFO', message, data); },
+            warn: function(message, data) { this.log('WARN', message, data); },
+            error: function(message, data) { this.log('ERROR', message, data); }
+        };
+        
+        // 检测平台
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const platformInfo = document.getElementById('platformInfo');
+        platformInfo.textContent = isAndroid ? 'Android平台' : 'Web平台';
+        logManager.info('平台检测结果', { isAndroid, userAgent: navigator.userAgent });
+        
+        // 音频状态
+        const audioState = {
+            audio1Playing: false,
+            audio2Playing: false,
+            alarmPlaying: false
+        };
+        
+        // 音频实例存储
+        const audioInstances = {
+            audio1: null,
+            audio2: null,
+            alarm: null
+        };
+        
+        // 显示错误弹窗
+        function showError(message) {
+            const errorPopup = document.getElementById('errorPopup');
+            errorPopup.textContent = message;
+            errorPopup.style.display = 'block';
+            
+            // 5秒后自动隐藏错误信息
+            setTimeout(() => {
+                errorPopup.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 更新音频项状态
+        function updateAudioItemState(itemId, isPlaying, hasError = false) {
+            const item = document.getElementById(itemId);
+            if (isPlaying) {
+                item.classList.add('playing');
+                item.classList.remove('error');
+            } else if (hasError) {
+                item.classList.add('error');
+                item.classList.remove('playing');
+            } else {
+                item.classList.remove('playing', 'error');
+            }
+        }
+        
+        // 更新按钮状态
+        function updateButtonStates() {
+            document.getElementById('play1Btn').disabled = audioState.audio1Playing;
+            document.getElementById('stop1Btn').disabled = !audioState.audio1Playing;
+            
+            document.getElementById('play2Btn').disabled = audioState.audio2Playing;
+            document.getElementById('stop2Btn').disabled = !audioState.audio2Playing;
+            
+            document.getElementById('play3Btn').disabled = audioState.alarmPlaying;
+            document.getElementById('stop3Btn').disabled = !audioState.alarmPlaying;
+            
+            document.getElementById('playComboBtn').disabled = audioState.audio1Playing || audioState.audio2Playing || audioState.alarmPlaying;
+        }
+        
+        // 播放1.mp3
+        function playAudio1() {
+            logManager.info('开始播放1.mp3 (引导音乐)');
+            
+            if (isAndroid && window.RegularAudioBridge) {
+                // 使用Android原生音频
+                try {
+                    const success = window.RegularAudioBridge.playRegularAudio('1.mp3', 1.0, false);
+                    if (success) {
+                        audioState.audio1Playing = true;
+                        updateAudioItemState('audio1Item', true);
+                        updateButtonStates();
+                        logManager.info('Android原生音频播放1.mp3成功');
+                    } else {
+                        updateAudioItemState('audio1Item', false, true);
+                        showError('Android原生音频播放1.mp3失败');
+                        logManager.error('Android原生音频播放1.mp3失败');
+                    }
+                } catch (error) {
+                    updateAudioItemState('audio1Item', false, true);
+                    showError(`调用Android原生音频接口失败: ${error.message}`);
+                    logManager.error('调用Android原生音频接口失败', error);
+                }
+            } else {
+                // 使用Web Audio
+                try {
+                    const audio = new Audio('/sounds/1.mp3');
+                    audioInstances.audio1 = audio; // 存储音频实例
+                    audio.play().then(() => {
+                        audioState.audio1Playing = true;
+                        updateAudioItemState('audio1Item', true);
+                        updateButtonStates();
+                        logManager.info('Web Audio播放1.mp3成功');
+                        
+                        audio.addEventListener('ended', () => {
+                            audioState.audio1Playing = false;
+                            audioInstances.audio1 = null;
+                            updateAudioItemState('audio1Item', false);
+                            updateButtonStates();
+                            logManager.info('1.mp3播放结束');
+                        });
+                    }).catch(error => {
+                        updateAudioItemState('audio1Item', false, true);
+                        showError(`Web Audio播放1.mp3失败: ${error.message}`);
+                        logManager.error('Web Audio播放1.mp3失败', error);
+                    });
+                } catch (error) {
+                    updateAudioItemState('audio1Item', false, true);
+                    showError(`创建音频元素失败: ${error.message}`);
+                    logManager.error('创建音频元素失败', error);
+                }
+            }
+        }
+        
+        // 停止1.mp3
+        function stopAudio1() {
+            logManager.info('停止播放1.mp3');
+            
+            if (isAndroid && window.RegularAudioBridge) {
+                try {
+                    const success = window.RegularAudioBridge.stopRegularAudio();
+                    if (success) {
+                        audioState.audio1Playing = false;
+                        updateAudioItemState('audio1Item', false);
+                        updateButtonStates();
+                        logManager.info('Android原生音频停止1.mp3成功');
+                    } else {
+                        showError('Android原生音频停止1.mp3失败');
+                        logManager.error('Android原生音频停止1.mp3失败');
+                    }
+                } catch (error) {
+                    showError(`停止Android原生音频失败: ${error.message}`);
+                    logManager.error('停止Android原生音频失败', error);
+                }
+            } else {
+                // Web Audio停止逻辑
+                if (audioInstances.audio1) {
+                    try {
+                        audioInstances.audio1.pause();
+                        audioInstances.audio1.currentTime = 0;
+                        audioInstances.audio1 = null;
+                    } catch (error) {
+                        logManager.error('停止音频1.mp3时出错', error);
+                    }
+                }
+                audioState.audio1Playing = false;
+                updateAudioItemState('audio1Item', false);
+                updateButtonStates();
+                logManager.info('Web Audio停止1.mp3');
+            }
+        }
+        
+        // 播放2.mp3
+        function playAudio2() {
+            logManager.info('开始播放2.mp3 (背景音乐)');
+            
+            if (isAndroid && window.RegularAudioBridge) {
+                // 使用Android原生音频
+                try {
+                    const success = window.RegularAudioBridge.playRegularAudio('2.mp3', 0.5, true);
+                    if (success) {
+                        audioState.audio2Playing = true;
+                        updateAudioItemState('audio2Item', true);
+                        updateButtonStates();
+                        logManager.info('Android原生音频播放2.mp3成功');
+                    } else {
+                        updateAudioItemState('audio2Item', false, true);
+                        showError('Android原生音频播放2.mp3失败');
+                        logManager.error('Android原生音频播放2.mp3失败');
+                    }
+                } catch (error) {
+                    updateAudioItemState('audio2Item', false, true);
+                    showError(`调用Android原生音频接口失败: ${error.message}`);
+                    logManager.error('调用Android原生音频接口失败', error);
+                }
+            } else {
+                // 使用Web Audio
+                try {
+                    const audio = new Audio('/sounds/2.mp3');
+                    audio.loop = true;
+                    audio.volume = 0.5;
+                    audioInstances.audio2 = audio; // 存储音频实例
+                    audio.play().then(() => {
+                        audioState.audio2Playing = true;
+                        updateAudioItemState('audio2Item', true);
+                        updateButtonStates();
+                        logManager.info('Web Audio播放2.mp3成功');
+                        
+                        audio.addEventListener('ended', () => {
+                            if (audioState.audio2Playing) {
+                                audio.play(); // 循环播放
+                            }
+                        });
+                    }).catch(error => {
+                        updateAudioItemState('audio2Item', false, true);
+                        showError(`Web Audio播放2.mp3失败: ${error.message}`);
+                        logManager.error('Web Audio播放2.mp3失败', error);
+                    });
+                } catch (error) {
+                    updateAudioItemState('audio2Item', false, true);
+                    showError(`创建音频元素失败: ${error.message}`);
+                    logManager.error('创建音频元素失败', error);
+                }
+            }
+        }
+        
+        // 停止2.mp3
+        function stopAudio2() {
+            logManager.info('停止播放2.mp3');
+            
+            if (isAndroid && window.RegularAudioBridge) {
+                try {
+                    const success = window.RegularAudioBridge.stopRegularAudio();
+                    if (success) {
+                        audioState.audio2Playing = false;
+                        updateAudioItemState('audio2Item', false);
+                        updateButtonStates();
+                        logManager.info('Android原生音频停止2.mp3成功');
+                    } else {
+                        showError('Android原生音频停止2.mp3失败');
+                        logManager.error('Android原生音频停止2.mp3失败');
+                    }
+                } catch (error) {
+                    showError(`停止Android原生音频失败: ${error.message}`);
+                    logManager.error('停止Android原生音频失败', error);
+                }
+            } else {
+                // Web Audio停止逻辑
+                if (audioInstances.audio2) {
+                    try {
+                        audioInstances.audio2.pause();
+                        audioInstances.audio2.currentTime = 0;
+                        audioInstances.audio2 = null;
+                    } catch (error) {
+                        logManager.error('停止音频2.mp3时出错', error);
+                    }
+                }
+                audioState.audio2Playing = false;
+                updateAudioItemState('audio2Item', false);
+                updateButtonStates();
+                logManager.info('Web Audio停止2.mp3');
+            }
+        }
+        
+        // 播放闹钟
+        function playAlarm() {
+            logManager.info('开始播放闹钟');
+            
+            if (isAndroid && window.AlarmAudioBridge) {
+                try {
+                    const success = window.AlarmAudioBridge.playAlarm('3.mp3', true);
+                    if (success) {
+                        audioState.alarmPlaying = true;
+                        updateAudioItemState('audio3Item', true);
+                        updateButtonStates();
+                        logManager.info('Android闹钟播放成功');
+                    } else {
+                        updateAudioItemState('audio3Item', false, true);
+                        showError('Android闹钟播放失败');
+                        logManager.error('Android闹钟播放失败');
+                    }
+                } catch (error) {
+                    updateAudioItemState('audio3Item', false, true);
+                    showError(`调用闹钟接口失败: ${error.message}`);
+                    logManager.error('调用闹钟接口失败', error);
+                }
+            } else {
+                // 使用Web Audio
+                try {
+                    const audio = new Audio('/sounds/3.mp3');
+                    audio.loop = true;
+                    audioInstances.alarm = audio; // 存储音频实例
+                    audio.play().then(() => {
+                        audioState.alarmPlaying = true;
+                        updateAudioItemState('audio3Item', true);
+                        updateButtonStates();
+                        logManager.info('Web Audio播放闹钟成功');
+                        
+                        // 触发震动
+                        if (navigator.vibrate) {
+                            navigator.vibrate([200, 100, 200]);
+                            logManager.info('震动已触发');
+                        }
+                        
+                        audio.addEventListener('ended', () => {
+                            if (audioState.alarmPlaying) {
+                                audio.play(); // 循环播放
+                                if (navigator.vibrate) {
+                                    navigator.vibrate([200, 100, 200]);
+                                }
+                            }
+                        });
+                    }).catch(error => {
+                        updateAudioItemState('audio3Item', false, true);
+                        showError(`Web Audio播放闹钟失败: ${error.message}`);
+                        logManager.error('Web Audio播放闹钟失败', error);
+                    });
+                } catch (error) {
+                    updateAudioItemState('audio3Item', false, true);
+                    showError(`创建闹钟音频元素失败: ${error.message}`);
+                    logManager.error('创建闹钟音频元素失败', error);
+                }
+            }
+        }
+        
+        // 停止闹钟
+        function stopAlarm() {
+            logManager.info('停止播放闹钟');
+            
+            if (isAndroid && window.AlarmAudioBridge) {
+                try {
+                    const success = window.AlarmAudioBridge.stopAlarm();
+                    if (success) {
+                        audioState.alarmPlaying = false;
+                        updateAudioItemState('audio3Item', false);
+                        updateButtonStates();
+                        logManager.info('Android闹钟停止成功');
+                    } else {
+                        showError('Android闹钟停止失败');
+                        logManager.error('Android闹钟停止失败');
+                    }
+                } catch (error) {
+                    showError(`停止闹钟失败: ${error.message}`);
+                    logManager.error('停止闹钟失败', error);
+                }
+            } else {
+                // Web Audio停止逻辑
+                if (audioInstances.alarm) {
+                    try {
+                        audioInstances.alarm.pause();
+                        audioInstances.alarm.currentTime = 0;
+                        audioInstances.alarm = null;
+                    } catch (error) {
+                        logManager.error('停止闹钟时出错', error);
+                    }
+                }
+                audioState.alarmPlaying = false;
+                updateAudioItemState('audio3Item', false);
+                updateButtonStates();
+                logManager.info('Web Audio停止闹钟');
+            }
+        }
+        
+        // 组合播放
+        function playCombo() {
+            logManager.info('开始组合播放: 1.mp3 + 2.mp3');
+            
+            // 先播放1.mp3
+            playAudio1();
+            
+            // 2秒后播放2.mp3
+            setTimeout(() => {
+                if (audioState.audio1Playing) {
+                    playAudio2();
+                }
+            }, 2000);
+        }
+        
+        // 停止所有
+        function stopAll() {
+            logManager.info('停止所有音频');
+            
+            if (audioState.audio1Playing) {
+                stopAudio1();
+            }
+            
+            if (audioState.audio2Playing) {
+                stopAudio2();
+            }
+            
+            if (audioState.alarmPlaying) {
+                stopAlarm();
+            }
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            logManager.info('默认音频测试页面已加载');
+            updateButtonStates();
+        });
+    </script>
+</body>
+</html>

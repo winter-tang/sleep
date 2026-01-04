@@ -298,23 +298,9 @@ function App() {
           enableAlarm={enableAlarm}
         />
         
-        {/* 将三个图标按钮移到最下面 */}
+        {/* 底部功能按钮 */}
         <div className="footer-buttons">
-          <button 
-            className="theme-toggle"
-            onClick={toggleTheme}
-            aria-label={isDarkMode ? '切换至浅色模式' : '切换至深色模式'}
-          >
-            {isDarkMode ? '☀️' : '🌙'}
-          </button>
-          <button 
-            className="history-button"
-            onClick={togglePlaybackHistory}
-            aria-label="查看播放记录"
-          >
-            <StatisticsIcon size={20} />
-          </button>
-          <button 
+          <button
             className="log-button"
             onClick={() => setShowLogViewer(true)}
             aria-label="查看日志"
@@ -322,7 +308,21 @@ function App() {
             📋
             <span className="button-text">日志</span>
           </button>
-          <button 
+          <button
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={isDarkMode ? '切换至浅色模式' : '切换至深色模式'}
+          >
+            {isDarkMode ? '☀️' : '🌙'}
+          </button>
+          <button
+            className="history-button"
+            onClick={togglePlaybackHistory}
+            aria-label="查看播放记录"
+          >
+            <StatisticsIcon size={20} />
+          </button>
+          <button
             className="info-button"
             onClick={toggleInstructions}
             aria-label="查看应用功能说明"

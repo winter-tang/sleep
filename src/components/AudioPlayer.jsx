@@ -5,31 +5,53 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
   const audioRef2 = useRef(null)
   const alarmRef = useRef(null)
   const tempAlarmRef = useRef(null) // 添加临时闹钟音频引用
+  const tempAudioRef1 = useRef(null) // 添加临时1.mp3音频引用
+  const tempAudioRef2 = useRef(null) // 添加临时2.mp3音频引用
+  
+  // 暴露alarmRef到window对象，方便其他组件访问
+  useEffect(() => {
+    window.alarmRef = alarmRef;
+  }, []);
   const [audioInitialized, setAudioInitialized] = useState(false)
   const [isAndroid, setIsAndroid] = useState(false)
   const [userInteracted, setUserInteracted] = useState(false)
+  const userInteractedRef = useRef(false) // 使用ref避免闭包问题
+  const [audioError, setAudioError] = useState(null) // 添加错误状态
+  
+  // 显示错误信息的函数
+  const showError = (message) => {
+    setAudioError(message)
+    // 5秒后自动隐藏错误信息
+    setTimeout(() => {
+      setAudioError(null)
+    }, 5000)
+  }
   
   // 检测用户交互
   useEffect(() => {
     const handleUserInteraction = () => {
-      if (!userInteracted) {
+      if (!userInteractedRef.current) {
+        userInteractedRef.current = true
         setUserInteracted(true)
-        window.logManager.info('检测到用户交互，启用音频播放')
+        window.logManager.info('检测到用户交互，启用音频播放', {
+          eventType: 'user-interaction',
+          timestamp: new Date().toISOString()
+        })
       }
     }
-    
-    // 监听用户交互事件
-    const events = ['click', 'touchstart', 'keydown', 'mousedown']
+
+    // 监听用户交互事件 - 只在组件挂载时添加一次
+    const events = ['click', 'touchstart', 'keydown', 'mousedown', 'touchend']
     events.forEach(event => {
-      document.addEventListener(event, handleUserInteraction, { once: true })
+      document.addEventListener(event, handleUserInteraction, { passive: true })
     })
-    
+
     return () => {
       events.forEach(event => {
         document.removeEventListener(event, handleUserInteraction)
       })
     }
-  }, [userInteracted])
+  }, []) // ✅ 空依赖数组 - 只运行一次
 
   // 检测是否在Android环境中
   useEffect(() => {
@@ -50,20 +72,11 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
     window.logManager.info('初始化音频播放器')
     window.logManager.info('平台检测结果:', { isAndroid, userAgent: navigator.userAgent })
     
-    // 根据平台选择不同的音频路径
-    const audioPath1 = isAndroid ? './sounds/1.mp3' : '/sounds/1.mp3'
-    const audioPath2 = isAndroid ? './sounds/2.mp3' : '/sounds/2.mp3'
-    const audioPath3 = isAndroid ? './sounds/3.mp3' : '/sounds/3.mp3'
-    
-    // 在Web环境中，确保路径正确
-    const webAudioPath1 = '/sounds/1.mp3'
-    const webAudioPath2 = '/sounds/2.mp3'
-    const webAudioPath3 = '/sounds/3.mp3'
-    
-    // 使用适合当前环境的路径
-    const finalAudioPath1 = isAndroid ? audioPath1 : webAudioPath1
-    const finalAudioPath2 = isAndroid ? audioPath2 : webAudioPath2
-    const finalAudioPath3 = isAndroid ? audioPath3 : webAudioPath3
+    // 使用相对路径以支持Capacitor打包后的环境
+    // 相对路径会从index.html所在位置开始查找
+    const finalAudioPath1 = './sounds/1.mp3'
+    const finalAudioPath2 = './sounds/2.mp3'
+    const finalAudioPath3 = './sounds/3.mp3'
     
     window.logManager.info('音频路径配置:', { 
       finalAudioPath1, 
@@ -78,10 +91,10 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
           alarmRef.current = new Audio(finalAudioPath3)
           
           // 设置基本属性
-          audioRef1.current.volume = 0.3
-          audioRef2.current.volume = 0.1
+          audioRef1.current.volume = 0.6  // 提高冥想引导音量
+          audioRef2.current.volume = 0.3  // 提高背景音乐音量
           audioRef2.current.loop = true
-          alarmRef.current.volume = 0.5
+          alarmRef.current.volume = 0.8  // 提高闹钟音量，确保能听到
           
           // 预加载音频文件
           audioRef1.current.preload = 'auto'
@@ -98,6 +111,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
     
     // 添加错误处理
     audioRef1.current.addEventListener('error', (e) => {
+      const errorMessage = `1.mp3 加载失败: ${e.target.error ? e.target.error.message : '未知错误'}`
       window.logManager.error('1.mp3 加载失败', { 
         error: e, 
         code: e.target.error ? e.target.error.code : 'unknown',
@@ -107,9 +121,11 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         networkState: e.target.networkState,
         readyState: e.target.readyState
       })
+      showError(errorMessage)
     })
     
     audioRef2.current.addEventListener('error', (e) => {
+      const errorMessage = `2.mp3 加载失败: ${e.target.error ? e.target.error.message : '未知错误'}`
       window.logManager.error('2.mp3 加载失败', { 
         error: e, 
         code: e.target.error ? e.target.error.code : 'unknown',
@@ -118,9 +134,11 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         networkState: e.target.networkState,
         readyState: e.target.readyState
       })
+      showError(errorMessage)
     })
     
     alarmRef.current.addEventListener('error', (e) => {
+      const errorMessage = `3.mp3 加载失败: ${e.target.error ? e.target.error.message : '未知错误'}`
       window.logManager.error('3.mp3 加载失败', { 
         error: e, 
         code: e.target.error ? e.target.error.code : 'unknown',
@@ -129,6 +147,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         networkState: e.target.networkState,
         readyState: e.target.readyState
       })
+      showError(errorMessage)
     })
     
     // 添加加载状态监听
@@ -272,66 +291,256 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
     window.logManager.info(`播放状态变化: ${isPlaying}`)
     
     if (isPlaying) {
+        // 强制设置用户已交互（如果用户点击了播放按钮）
+        if (!userInteractedRef.current) {
+          userInteractedRef.current = true
+          setUserInteracted(true)
+          window.logManager.info('播放按钮被点击，设置用户交互为true')
+        }
+
         // 开始播放
         if (playMeditationAudio) {
           // 播放冥想引导（1.mp3），然后播放背景音乐（2.mp3）
-          if (!userInteracted) {
-            window.logManager.error('用户尚未交互，无法播放音频。请先点击屏幕任意位置。')
-            return
-          }
-          
           window.logManager.info('准备播放1.mp3（冥想引导）', {
             currentTime: audioRef1.current.currentTime,
             paused: audioRef1.current.paused,
             readyState: audioRef1.current.readyState,
             networkState: audioRef1.current.networkState,
-            userInteracted: userInteracted
+            userInteracted: userInteracted,
+            isAndroid: isAndroid,
+            hasRegularAudioBridge: !!window.RegularAudioBridge
           })
-          
+
           audioRef1.current.currentTime = 0
           audioRef2.current.currentTime = 0
-          audioRef1.current.play()
-            .then(() => {
-              window.logManager.info('1.mp3播放成功')
-            })
-            .catch(err => {
-              window.logManager.error('播放1.mp3失败', {
+
+          // 在Android环境中使用原生音频接口
+          if (isAndroid && window.RegularAudioBridge) {
+            window.logManager.info('Android环境：使用原生音频接口播放1.mp3（冥想引导）')
+
+            try {
+              const success = window.RegularAudioBridge.playRegularAudio('1.mp3', 0.6, false)
+              window.logManager.info('RegularAudioBridge.playRegularAudio返回值:', { success })
+
+              if (success) {
+                window.logManager.info('Android原生音频播放1.mp3（冥想引导）成功')
+
+                // 设置定时器，在1.mp3播放结束后播放2.mp3
+                // 注意：这里使用固定时间，因为原生音频无法准确获取播放进度
+                setTimeout(() => {
+                  window.logManager.info('1.mp3播放时间结束，开始播放2.mp3（背景音乐）')
+
+                  // 播放背景音乐（2.mp3）
+                  try {
+                    const success = window.RegularAudioBridge.playRegularAudio('2.mp3', 0.3, true)
+                    if (success) {
+                      window.logManager.info('Android原生音频播放2.mp3（背景音乐）成功')
+                    } else {
+                      const errorMessage = 'Android原生音频播放2.mp3（背景音乐）失败，尝试Web音频'
+                      window.logManager.error(errorMessage)
+                      showError(errorMessage)
+                      // Fallback到Web音频
+                      playWebBackgroundAudio()
+                    }
+                  } catch (err) {
+                    const errorMessage = `调用Android原生音频接口播放2.mp3失败: ${err.message}`
+                    window.logManager.error('调用Android原生音频接口播放2.mp3失败', {
+                      error: err,
+                      name: err.name,
+                      message: err.message
+                    })
+                    showError(errorMessage)
+                    // Fallback到Web音频
+                    playWebBackgroundAudio()
+                  }
+                }, 60000) // 假设1.mp3时长为60秒
+              } else {
+                const errorMessage = 'Android原生音频播放1.mp3（冥想引导）失败，fallback到Web音频'
+                window.logManager.warn(errorMessage)
+                showError(errorMessage)
+                playWebMeditationAudio()
+              }
+            } catch (err) {
+              const errorMessage = `调用Android原生音频接口播放1.mp3失败: ${err.message}`
+              window.logManager.error('调用Android原生音频接口播放1.mp3失败', {
                 error: err,
                 name: err.name,
-                message: err.message,
-                currentTime: audioRef1.current.currentTime,
-                paused: audioRef1.current.paused,
-                readyState: audioRef1.current.readyState,
-                networkState: audioRef1.current.networkState
+                message: err.message
               })
-            })
+              showError(errorMessage)
+              playWebMeditationAudio()
+            }
+          } else {
+            // 非Android环境或没有原生接口，使用Web音频
+            if (!window.RegularAudioBridge) {
+              window.logManager.warn('RegularAudioBridge不可用，使用Web音频')
+            }
+            playWebMeditationAudio()
+          }
         } else {
           // 不播放冥想引导，直接播放背景音乐（2.mp3）
-          if (!userInteracted) {
-            window.logManager.error('用户尚未交互，无法播放音频。请先点击屏幕任意位置。')
-            return
-          }
-          
           window.logManager.info('准备直接播放2.mp3（背景音乐）', {
             currentTime: audioRef2.current.currentTime,
             paused: audioRef2.current.paused,
             readyState: audioRef2.current.readyState,
             networkState: audioRef2.current.networkState,
-            userInteracted: userInteracted
+            userInteracted: userInteracted,
+            isAndroid: isAndroid,
+            hasRegularAudioBridge: !!window.RegularAudioBridge
           })
-          
-          const tryPlayAudio2 = (retryCount = 0) => {
-            if (retryCount >= 3) {
-              window.logManager.error('2.mp3播放重试次数已达上限')
-              return
+
+          // 在Android环境中使用原生音频接口
+          if (isAndroid && window.RegularAudioBridge) {
+            window.logManager.info('Android环境：使用原生音频接口直接播放2.mp3（背景音乐）')
+
+            try {
+              const success = window.RegularAudioBridge.playRegularAudio('2.mp3', 0.3, true)
+              window.logManager.info('RegularAudioBridge.playRegularAudio返回值:', { success })
+
+              if (success) {
+                window.logManager.info('Android原生音频播放2.mp3（背景音乐）成功')
+              } else {
+                window.logManager.error('Android原生音频播放2.mp3（背景音乐）失败，fallback到Web音频')
+                playWebBackgroundAudio()
+              }
+            } catch (err) {
+              window.logManager.error('调用Android原生音频接口播放2.mp3失败', {
+                error: err,
+                name: err.name,
+                message: err.message
+              })
+              playWebBackgroundAudio()
             }
-            
-            window.logManager.info(`尝试播放2.mp3 (第${retryCount + 1}次)`)
-            
-            audioRef2.current.currentTime = 0
-            audioRef2.current.play().then(() => {
+          } else {
+            // 非Android环境或没有原生接口，使用Web音频
+            if (!window.RegularAudioBridge) {
+              window.logManager.warn('RegularAudioBridge不可用，使用Web音频')
+            }
+            playWebBackgroundAudio()
+          }
+        }
+      } else {
+      // 暂停所有音频
+      if (isAndroid && window.RegularAudioBridge) {
+        window.logManager.info('Android环境：使用原生音频接口停止音频')
+        
+        try {
+          const success = window.RegularAudioBridge.stopRegularAudio()
+          if (success) {
+            window.logManager.info('Android原生音频停止成功')
+          } else {
+            window.logManager.error('Android原生音频停止失败')
+          }
+        } catch (err) {
+          window.logManager.error('调用Android原生音频停止接口失败', {
+            error: err,
+            name: err.name,
+            message: err.message
+          })
+        }
+      }
+      
+      audioRef1.current.pause()
+      audioRef2.current.pause()
+    }
+  }, [isPlaying, playMeditationAudio, audioInitialized, isAndroid])
+  
+  // Web音频播放冥想引导和背景音乐的辅助函数
+  const playWebMeditationAudio = () => {
+    window.logManager.info('使用Web音频播放冥想引导和背景音乐')
+    
+    // 原有的Web音频播放逻辑
+    if (isAndroid && audioRef1.current.readyState < 2) {
+      window.logManager.info('Android环境：1.mp3未完全加载，等待加载完成')
+      audioRef1.current.load()
+      
+      const waitForCanPlay = () => {
+        return new Promise((resolve) => {
+          if (audioRef1.current.readyState >= 2) {
+            resolve()
+          } else {
+            audioRef1.current.addEventListener('canplay', resolve, { once: true })
+          }
+        })
+      }
+      
+      waitForCanPlay().then(() => {
+        window.logManager.info('Android环境：1.mp3加载完成，开始播放')
+        audioRef1.current.currentTime = 0
+        audioRef1.current.play()
+          .then(() => {
+            window.logManager.info('1.mp3播放成功')
+          })
+          .catch(err => {
+            const errorMessage = `播放1.mp3失败: ${err.message}`
+            window.logManager.error('播放1.mp3失败', {
+              error: err,
+              name: err.name,
+              message: err.message,
+              currentTime: audioRef1.current.currentTime,
+              paused: audioRef1.current.paused,
+              readyState: audioRef1.current.readyState,
+              networkState: audioRef1.current.networkState
+            })
+            showError(errorMessage)
+          })
+      })
+    } else {
+      audioRef1.current.play()
+        .then(() => {
+          window.logManager.info('1.mp3播放成功')
+        })
+        .catch(err => {
+          const errorMessage = `播放1.mp3失败: ${err.message}`
+          window.logManager.error('播放1.mp3失败', {
+            error: err,
+            name: err.name,
+            message: err.message,
+            currentTime: audioRef1.current.currentTime,
+            paused: audioRef1.current.paused,
+            readyState: audioRef1.current.readyState,
+            networkState: audioRef1.current.networkState
+          })
+          showError(errorMessage)
+        })
+    }
+  }
+  
+  // Web音频播放背景音乐的辅助函数
+  const playWebBackgroundAudio = () => {
+    window.logManager.info('使用Web音频播放背景音乐')
+    
+    const tryPlayAudio2 = (retryCount = 0) => {
+      if (retryCount >= 3) {
+        window.logManager.error('2.mp3播放重试次数已达上限')
+        return
+      }
+      
+      window.logManager.info(`尝试播放2.mp3 (第${retryCount + 1}次)`)
+      
+      // 在Android环境中，确保音频已加载
+      if (isAndroid && audioRef2.current.readyState < 2 && retryCount === 0) {
+        window.logManager.info('Android环境：2.mp3未完全加载，等待加载完成')
+        audioRef2.current.load()
+        
+        const waitForCanPlay = () => {
+          return new Promise((resolve) => {
+            if (audioRef2.current.readyState >= 2) {
+              resolve()
+            } else {
+              audioRef2.current.addEventListener('canplay', resolve, { once: true })
+            }
+          })
+        }
+        
+        waitForCanPlay().then(() => {
+          window.logManager.info('Android环境：2.mp3加载完成，开始播放')
+          audioRef2.current.currentTime = 0
+          audioRef2.current.play()
+            .then(() => {
               window.logManager.info('2.mp3播放成功')
-            }).catch(err => {
+            })
+            .catch(err => {
               window.logManager.error(`播放2.mp3失败 (第${retryCount + 1}次)`, {
                 error: err,
                 name: err.name,
@@ -348,26 +557,43 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
                 setTimeout(() => tryPlayAudio2(retryCount + 1), 1000 * (retryCount + 1))
               }
             })
-          }
-          
-          tryPlayAudio2()
-        }
+        })
       } else {
-      // 暂停所有音频
-      audioRef1.current.pause()
-      audioRef2.current.pause()
+        audioRef2.current.currentTime = 0
+        audioRef2.current.play().then(() => {
+          window.logManager.info('2.mp3播放成功')
+        }).catch(err => {
+          window.logManager.error(`播放2.mp3失败 (第${retryCount + 1}次)`, {
+            error: err,
+            name: err.name,
+            message: err.message,
+            paused: audioRef2.current.paused,
+            currentTime: audioRef2.current.currentTime,
+            readyState: audioRef2.current.readyState,
+            networkState: audioRef2.current.networkState,
+            userInteracted: userInteracted
+          })
+          
+          // 如果失败，延迟后重试
+          if (retryCount < 2) {
+            setTimeout(() => tryPlayAudio2(retryCount + 1), 1000 * (retryCount + 1))
+          }
+        })
+      }
     }
-  }, [isPlaying, playMeditationAudio, audioInitialized])
+    
+    tryPlayAudio2()
+  }
 
   // 更新音量
   useEffect(() => {
     if (!audioInitialized) return
     
     if (audioRef1.current) {
-      audioRef1.current.volume = volume * 0.3 // 冥想音乐使用30%音量
+      audioRef1.current.volume = volume * 0.6 // 冥想音乐使用60%音量
     }
     if (audioRef2.current) {
-      audioRef2.current.volume = volume * 0.1 // 阿尔法音乐使用10%音量
+      audioRef2.current.volume = volume * 0.3 // 阿尔法音乐使用30%音量
     }
   }, [volume, audioInitialized])
 
@@ -442,6 +668,109 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
     // 暴露测试函数到window对象
     window.testAudioFiles = testAudioFiles
     
+    // 手动播放1.mp3的测试函数
+    window.playAudio1 = () => {
+      if (!audioInitialized) {
+        window.logManager.error('音频未初始化，无法播放1.mp3')
+        return
+      }
+      
+      if (!userInteracted) {
+        window.logManager.error('用户尚未交互，无法播放1.mp3。请先点击屏幕任意位置。')
+        return
+      }
+      
+      window.logManager.info('手动播放1.mp3', {
+        paused: audioRef1.current.paused,
+        currentTime: audioRef1.current.currentTime,
+        readyState: audioRef1.current.readyState,
+        networkState: audioRef1.current.networkState,
+        volume: audioRef1.current.volume,
+        isAndroid: isAndroid
+      })
+      
+      // 在Android环境中使用原生音频接口
+      if (isAndroid && window.RegularAudioBridge) {
+        window.logManager.info('Android环境：使用原生音频接口播放1.mp3')
+        
+        try {
+          const success = window.RegularAudioBridge.playRegularAudio('1.mp3', 0.3, false)
+          if (success) {
+            window.logManager.info('Android原生音频播放1.mp3成功')
+          } else {
+            window.logManager.error('Android原生音频播放1.mp3失败，尝试Web音频')
+            // 如果原生播放失败，尝试Web音频
+            playWebAudio1()
+          }
+        } catch (err) {
+          window.logManager.error('调用Android原生音频接口失败', {
+            error: err,
+            name: err.name,
+            message: err.message
+          })
+          // 如果调用失败，尝试Web音频
+          playWebAudio1()
+        }
+      } else {
+        // 非Android环境或没有原生接口，使用Web音频
+        playWebAudio1()
+      }
+    }
+    
+    // Web音频播放1.mp3的辅助函数
+    const playWebAudio1 = () => {
+      window.logManager.info('使用Web音频播放1.mp3')
+      
+      // 停止其他音频
+      if (audioRef2.current) audioRef2.current.pause()
+      if (alarmRef.current) alarmRef.current.pause()
+      if (tempAudioRef2.current) tempAudioRef2.current.pause()
+      
+      // 使用临时音频元素播放，类似闹钟播放方式
+      try {
+        // 停止之前的临时音频（如果存在）
+        if (tempAudioRef1.current) {
+          tempAudioRef1.current.pause()
+          tempAudioRef1.current.currentTime = 0
+        }
+        
+        const audioPath = './sounds/1.mp3'
+        tempAudioRef1.current = new Audio(audioPath)
+        tempAudioRef1.current.volume = 0.3
+        tempAudioRef1.current.currentTime = 0
+        
+        tempAudioRef1.current.play().then(() => {
+          window.logManager.info('1.mp3临时音频播放成功')
+        }).catch(err => {
+          window.logManager.error('1.mp3临时音频播放失败', {
+            error: err,
+            name: err.name,
+            message: err.message
+          })
+          
+          // 如果临时音频失败，尝试使用原始音频引用
+          if (audioRef1.current) {
+            audioRef1.current.currentTime = 0
+            audioRef1.current.play().then(() => {
+              window.logManager.info('1.mp3原始音频播放成功')
+            }).catch(retryErr => {
+              window.logManager.error('1.mp3原始音频播放也失败', {
+                error: retryErr,
+                name: retryErr.name,
+                message: retryErr.message
+              })
+            })
+          }
+        })
+      } catch (err) {
+        window.logManager.error('创建1.mp3临时音频失败', {
+          error: err,
+          name: err.name,
+          message: err.message
+        })
+      }
+    }
+    
     // 手动播放2.mp3的测试函数
     window.playAudio2 = () => {
       if (!audioInitialized) {
@@ -460,39 +789,91 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         readyState: audioRef2.current.readyState,
         networkState: audioRef2.current.networkState,
         loop: audioRef2.current.loop,
-        volume: audioRef2.current.volume
+        volume: audioRef2.current.volume,
+        isAndroid: isAndroid
       })
       
-      const tryPlayAudio2 = (retryCount = 0) => {
-        if (retryCount >= 3) {
-          window.logManager.error('2.mp3手动播放重试次数已达上限')
-          return
-        }
+      // 在Android环境中使用原生音频接口
+      if (isAndroid && window.RegularAudioBridge) {
+        window.logManager.info('Android环境：使用原生音频接口播放2.mp3')
         
-        window.logManager.info(`尝试手动播放2.mp3 (第${retryCount + 1}次)`)
-        
-        audioRef2.current.currentTime = 0
-        audioRef2.current.play().then(() => {
-          window.logManager.info('2.mp3手动播放成功')
-        }).catch(err => {
-          window.logManager.error(`2.mp3手动播放失败 (第${retryCount + 1}次)`, {
+        try {
+          const success = window.RegularAudioBridge.playRegularAudio('2.mp3', 0.1, true)
+          if (success) {
+            window.logManager.info('Android原生音频播放2.mp3成功')
+          } else {
+            window.logManager.error('Android原生音频播放2.mp3失败，尝试Web音频')
+            // 如果原生播放失败，尝试Web音频
+            playWebAudio2()
+          }
+        } catch (err) {
+          window.logManager.error('调用Android原生音频接口失败', {
             error: err,
             name: err.name,
-            message: err.message,
-            paused: audioRef2.current.paused,
-            currentTime: audioRef2.current.currentTime,
-            readyState: audioRef2.current.readyState,
-            networkState: audioRef2.current.networkState
+            message: err.message
+          })
+          // 如果调用失败，尝试Web音频
+          playWebAudio2()
+        }
+      } else {
+        // 非Android环境或没有原生接口，使用Web音频
+        playWebAudio2()
+      }
+    }
+    
+    // Web音频播放2.mp3的辅助函数
+    const playWebAudio2 = () => {
+      window.logManager.info('使用Web音频播放2.mp3')
+      
+      // 停止其他音频
+      if (audioRef1.current) audioRef1.current.pause()
+      if (alarmRef.current) alarmRef.current.pause()
+      if (tempAudioRef1.current) tempAudioRef1.current.pause()
+      
+      // 使用临时音频元素播放，类似闹钟播放方式
+      try {
+        // 停止之前的临时音频（如果存在）
+        if (tempAudioRef2.current) {
+          tempAudioRef2.current.pause()
+          tempAudioRef2.current.currentTime = 0
+        }
+        
+        const audioPath = './sounds/2.mp3'
+        tempAudioRef2.current = new Audio(audioPath)
+        tempAudioRef2.current.volume = 0.1
+        tempAudioRef2.current.loop = true
+        tempAudioRef2.current.currentTime = 0
+        
+        tempAudioRef2.current.play().then(() => {
+          window.logManager.info('2.mp3临时音频播放成功')
+        }).catch(err => {
+          window.logManager.error('2.mp3临时音频播放失败', {
+            error: err,
+            name: err.name,
+            message: err.message
           })
           
-          // 如果失败，延迟后重试
-          if (retryCount < 2) {
-            setTimeout(() => tryPlayAudio2(retryCount + 1), 1000 * (retryCount + 1))
+          // 如果临时音频失败，尝试使用原始音频引用
+          if (audioRef2.current) {
+            audioRef2.current.currentTime = 0
+            audioRef2.current.play().then(() => {
+              window.logManager.info('2.mp3原始音频播放成功')
+            }).catch(retryErr => {
+              window.logManager.error('2.mp3原始音频播放也失败', {
+                error: retryErr,
+                name: retryErr.name,
+                message: retryErr.message
+              })
+            })
           }
         })
+      } catch (err) {
+        window.logManager.error('创建2.mp3临时音频失败', {
+          error: err,
+          name: err.name,
+          message: err.message
+        })
       }
-      
-      tryPlayAudio2()
     }
     
     // 暴露闹钟播放方法到window对象
@@ -528,6 +909,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
             
             tempAlarmRef.current = new Audio(finalAudioPath3)
             tempAlarmRef.current.volume = 0.8
+            tempAlarmRef.current.loop = true  // 临时闹钟也循环播放
             tempAlarmRef.current.play().then(() => {
               window.logManager.info('临时闹钟音频播放成功')
             }).catch(err => {
@@ -549,6 +931,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
         if (alarmRef.current) {
           // 重置音频状态
           alarmRef.current.currentTime = 0
+          alarmRef.current.loop = true  // 确保闹钟循环播放
           
           // 确保音频已加载
           if (alarmRef.current.readyState < 2) {
@@ -655,6 +1038,59 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
           tempAlarmRef.current = null
           window.logManager.info('临时闹钟音频已停止')
         }
+      }
+    }
+    
+    // 暴露停止音频方法
+    window.stopAllAudio = () => {
+      window.logManager.info('停止所有音频')
+      
+      // 在Android环境中使用原生音频接口
+      if (isAndroid && window.RegularAudioBridge) {
+        window.logManager.info('Android环境：使用原生音频接口停止音频')
+        
+        try {
+          const success = window.RegularAudioBridge.stopRegularAudio()
+          if (success) {
+            window.logManager.info('Android原生音频停止成功')
+          } else {
+            window.logManager.error('Android原生音频停止失败')
+          }
+        } catch (err) {
+          window.logManager.error('调用Android原生音频停止接口失败', {
+            error: err,
+            name: err.name,
+            message: err.message
+          })
+        }
+      }
+      
+      // 停止主要音频
+      if (audioRef1.current) {
+        audioRef1.current.pause()
+        audioRef1.current.currentTime = 0
+        window.logManager.info('1.mp3主要音频已停止')
+      }
+      
+      if (audioRef2.current) {
+        audioRef2.current.pause()
+        audioRef2.current.currentTime = 0
+        window.logManager.info('2.mp3主要音频已停止')
+      }
+      
+      // 停止临时音频
+      if (tempAudioRef1.current) {
+        tempAudioRef1.current.pause()
+        tempAudioRef1.current.currentTime = 0
+        tempAudioRef1.current = null
+        window.logManager.info('1.mp3临时音频已停止')
+      }
+      
+      if (tempAudioRef2.current) {
+        tempAudioRef2.current.pause()
+        tempAudioRef2.current.currentTime = 0
+        tempAudioRef2.current = null
+        window.logManager.info('2.mp3临时音频已停止')
       }
     }
     

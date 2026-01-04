@@ -49,6 +49,9 @@
             console.log(message);
         }
         
+        // 检测平台
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        
         // 创建闹钟音频对象
         let alarmAudio = null;
         
@@ -85,61 +88,76 @@
         function testAlarm() {
             log('测试闹钟播放...');
             
-            if (!alarmAudio) {
-                if (!initAlarm()) {
-                    log('闹钟初始化失败，无法测试');
-                    return;
+            if (isAndroid && window.AlarmAudioBridge) {
+                // 使用Android原生音频
+                try {
+                    const success = window.AlarmAudioBridge.playAlarm('3.mp3', true);
+                    if (success) {
+                        log('Android闹钟播放成功');
+                    } else {
+                        log('Android闹钟播放失败');
+                    }
+                } catch (error) {
+                    log(`调用闹钟接口失败: ${error.message}`);
                 }
-            }
-            
-            log('开始测试闹钟播放...');
-            log(`当前音频状态: 已加载=${alarmAudio.readyState >= 2}, 暂停=${alarmAudio.paused}, 当前时间=${alarmAudio.currentTime}s`);
-            
-            // 播放闹钟
-            alarmAudio.currentTime = 0;
-            const playPromise = alarmAudio.play();
-            
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => {
-                        log('闹钟播放成功');
-                    })
-                    .catch(error => {
-                        log(`闹钟播放失败: ${error.message}`);
-                        log(`错误名称: ${error.name}`);
-                        
-                        // 尝试替代方案1: 创建新的音频元素
-                        log('尝试替代方案1: 创建新的音频元素');
-                        try {
-                            const tempAlarm = new Audio('/sounds/3.mp3');
-                            tempAlarm.volume = 0.8;
-                            tempAlarm.play().then(() => {
-                                log('替代方案1播放成功！');
-                            }).catch(err => {
-                                log(`替代方案1失败: ${err.message}`);
-                                
-                                // 尝试替代方案2: 先加载再播放
-                                log('尝试替代方案2: 先加载再播放');
-                                const tempAlarm2 = new Audio();
-                                tempAlarm2.src = '/sounds/3.mp3';
-                                tempAlarm2.volume = 0.8;
-                                
-                                tempAlarm2.addEventListener('canplay', () => {
-                                    log('替代方案2音频加载完成，尝试播放');
-                                    tempAlarm2.play().then(() => {
-                                        log('替代方案2播放成功！');
-                                    }).catch(err2 => {
-                                        log(`替代方案2也失败: ${err2.message}`);
-                                        log('所有播放尝试均失败，可能是浏览器策略限制');
+            } else {
+                // 使用Web Audio
+                if (!alarmAudio) {
+                    if (!initAlarm()) {
+                        log('闹钟初始化失败，无法测试');
+                        return;
+                    }
+                }
+                
+                log('开始测试闹钟播放...');
+                log(`当前音频状态: 已加载=${alarmAudio.readyState >= 2}, 暂停=${alarmAudio.paused}, 当前时间=${alarmAudio.currentTime}s`);
+                
+                // 播放闹钟
+                alarmAudio.currentTime = 0;
+                const playPromise = alarmAudio.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise
+                        .then(() => {
+                            log('闹钟播放成功');
+                        })
+                        .catch(error => {
+                            log(`闹钟播放失败: ${error.message}`);
+                            log(`错误名称: ${error.name}`);
+                            
+                            // 尝试替代方案1: 创建新的音频元素
+                            log('尝试替代方案1: 创建新的音频元素');
+                            try {
+                                const tempAlarm = new Audio('/sounds/3.mp3');
+                                tempAlarm.volume = 0.8;
+                                tempAlarm.play().then(() => {
+                                    log('替代方案1播放成功！');
+                                }).catch(err => {
+                                    log(`替代方案1失败: ${err.message}`);
+                                    
+                                    // 尝试替代方案2: 先加载再播放
+                                    log('尝试替代方案2: 先加载再播放');
+                                    const tempAlarm2 = new Audio();
+                                    tempAlarm2.src = '/sounds/3.mp3';
+                                    tempAlarm2.volume = 0.8;
+                                    
+                                    tempAlarm2.addEventListener('canplay', () => {
+                                        log('替代方案2音频加载完成，尝试播放');
+                                        tempAlarm2.play().then(() => {
+                                            log('替代方案2播放成功！');
+                                        }).catch(err2 => {
+                                            log(`替代方案2也失败: ${err2.message}`);
+                                            log('所有播放尝试均失败，可能是浏览器策略限制');
+                                        });
                                     });
+                                    
+                                    tempAlarm2.load();
                                 });
-                                
-                                tempAlarm2.load();
-                            });
-                        } catch (e) {
-                            log(`创建替代音频元素失败: ${e.message}`);
-                        }
-                    });
+                            } catch (e) {
+                                log(`创建替代音频元素失败: ${e.message}`);
+                            }
+                        });
+                }
             }
         }
         
@@ -147,12 +165,27 @@
         function stopAlarm() {
             log('停止闹钟...');
             
-            if (alarmAudio) {
-                alarmAudio.pause();
-                alarmAudio.currentTime = 0;
-                log('闹钟已停止');
+            if (isAndroid && window.AlarmAudioBridge) {
+                // 使用Android原生音频
+                try {
+                    const success = window.AlarmAudioBridge.stopAlarm();
+                    if (success) {
+                        log('Android闹钟已停止');
+                    } else {
+                        log('Android闹钟停止失败');
+                    }
+                } catch (error) {
+                    log(`停止闹钟接口失败: ${error.message}`);
+                }
             } else {
-                log('闹钟未初始化');
+                // 使用Web Audio
+                if (alarmAudio) {
+                    alarmAudio.pause();
+                    alarmAudio.currentTime = 0;
+                    log('闹钟已停止');
+                } else {
+                    log('闹钟未初始化');
+                }
             }
         }
         

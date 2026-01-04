@@ -466,11 +466,58 @@ h1 {
   transform: translateX(24px) scale(1.1);
 }
 
+/* 音频测试按钮样式 */
+.audio-test-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.audio-test-button {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  border: none;
+  border-radius: 25px;
+  color: white;
+  padding: 12px 20px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+  margin: 10px 0;
+}
+
+.audio-test-button:hover {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.audio-test-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+}
+
+.light-theme .audio-test-button {
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.2);
+}
+
+.light-theme .audio-test-button:hover {
+  background: linear-gradient(135deg, #45a049, #3d8b40);
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+}
+
 /* 底部按钮容器样式 */
 .footer-buttons {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 25px;
+  gap: 15px;
   margin-top: auto;
   padding: 15px;
   border-radius: 15px;
@@ -478,6 +525,9 @@ h1 {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-sizing: border-box;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .light-theme .footer-buttons {
@@ -489,13 +539,14 @@ h1 {
 .footer-buttons .theme-toggle,
 .footer-buttons .history-button,
 .footer-buttons .log-button,
+.footer-buttons .test-button,
 .footer-buttons .info-button {
   background: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 50%;
-  width: 45px;
-  height: 45px;
-  font-size: 1.5rem;
+  width: 50px;
+  height: 50px;
+  font-size: 1.4rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -505,21 +556,31 @@ h1 {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
-.footer-buttons .log-button {
+.footer-buttons .log-button,
+.footer-buttons .test-button {
   width: 55px;
   height: 55px;
+}
+
+.footer-buttons .log-button {
   background: rgba(255, 100, 100, 0.3);
   border: 2px solid rgba(255, 100, 100, 0.5);
 }
 
+.footer-buttons .test-button {
+  background: rgba(100, 255, 100, 0.3);
+  border: 2px solid rgba(100, 255, 100, 0.5);
+}
+
 .footer-buttons .button-text {
-  font-size: 0.6rem;
+  font-size: 0.5rem;
   margin-top: -2px;
 }
 
 .dark-theme .footer-buttons .theme-toggle,
 .dark-theme .footer-buttons .history-button,
 .dark-theme .footer-buttons .log-button,
+.dark-theme .footer-buttons .test-button,
 .dark-theme .footer-buttons .info-button {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
@@ -528,6 +589,7 @@ h1 {
 .light-theme .footer-buttons .theme-toggle,
 .light-theme .footer-buttons .history-button,
 .light-theme .footer-buttons .log-button,
+.light-theme .footer-buttons .test-button,
 .light-theme .footer-buttons .info-button {
   background: rgba(255, 255, 255, 0.9);
   color: #6e6e73;
@@ -537,6 +599,7 @@ h1 {
 .footer-buttons .theme-toggle:hover,
 .footer-buttons .history-button:hover,
 .footer-buttons .log-button:hover,
+.footer-buttons .test-button:hover,
 .footer-buttons .info-button:hover {
   transform: scale(1.1);
   background: rgba(255, 255, 255, 0.3);
@@ -545,6 +608,7 @@ h1 {
 .light-theme .footer-buttons .theme-toggle:hover,
 .light-theme .footer-buttons .history-button:hover,
 .light-theme .footer-buttons .log-button:hover,
+.light-theme .footer-buttons .test-button:hover,
 .light-theme .footer-buttons .info-button:hover {
   background: rgba(255, 255, 255, 1);
   color: #333;
@@ -553,6 +617,7 @@ h1 {
 .footer-buttons .theme-toggle:active,
 .footer-buttons .history-button:active,
 .footer-buttons .log-button:active,
+.footer-buttons .test-button:active,
 .footer-buttons .info-button:active {
   transform: scale(0.95);
 }
@@ -581,17 +646,19 @@ h1 {
   }
   
   .footer-buttons {
-    gap: 25px;
+    gap: 15px;
     padding: 15px;
+    max-width: 400px;
   }
   
   /* 在移动设备上增大底部按钮尺寸 */
   .footer-buttons .theme-toggle,
   .footer-buttons .history-button,
   .footer-buttons .log-button,
+  .footer-buttons .test-button,
   .footer-buttons .info-button {
-    width: 60px;
-    height: 60px;
-    font-size: 1.8rem;
+    width: 65px;
+    height: 65px;
+    font-size: 1.6rem;
   }
 }

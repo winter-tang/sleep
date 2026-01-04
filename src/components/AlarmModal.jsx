@@ -17,8 +17,12 @@ const AlarmModal = ({ isVisible, onClose }) => {
         if (window.playAlarm) {
           log.info('AlarmModal: 调用window.playAlarm()方法');
           window.playAlarm();
+        } else if (window.alarmRef && window.alarmRef.current) {
+          log.info('AlarmModal: 直接播放闹钟音频');
+          window.alarmRef.current.loop = true;  // 让闹钟循环播放
+          window.alarmRef.current.play();
         } else {
-          log.warn('AlarmModal: window.playAlarm()方法不存在');
+          log.warn('AlarmModal: 无法播放闹钟，音频引用不可用');
         }
       } catch (error) {
         log.error('AlarmModal: 播放闹钟时出错', error);
@@ -35,6 +39,7 @@ const AlarmModal = ({ isVisible, onClose }) => {
             log.info('AlarmModal: 直接停止闹钟播放');
             window.alarmRef.current.pause();
             window.alarmRef.current.currentTime = 0;
+            window.alarmRef.current.loop = false;  // 重置循环属性
           }
         } catch (error) {
           log.error('AlarmModal: 停止闹钟时出错', error);
