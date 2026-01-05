@@ -60,6 +60,23 @@ public class MainActivity extends AppCompatActivity {
         
         // 初始化普通音频播放器
         regularAudioPlayer = new RegularAudioPlayer(this);
+        // 设置音频播放完成监听器
+        regularAudioPlayer.setOnAudioCompletionListener(new RegularAudioPlayer.OnAudioCompletionListener() {
+            @Override
+            public void onAudioCompletion(String audioFileName) {
+                Log.d(TAG, "音频播放完成，通知JavaScript: " + audioFileName);
+                // 通过WebView调用JavaScript函数，通知音频播放完成
+                final String jsCode = "javascript:window.regularAudioPlayerCallback('" + audioFileName + "')";
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (webView != null) {
+                            webView.evaluateJavascript(jsCode, null);
+                        }
+                    }
+                });
+            }
+        });
         Log.d(TAG, "普通音频播放器已初始化");
         
         // 获取WebView并配置

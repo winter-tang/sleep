@@ -19,6 +19,21 @@ public class RegularAudioPlayer {
     private MediaPlayer mediaPlayer;
     private AudioManager audioManager;
     private boolean isPlaying = false;
+    private OnAudioCompletionListener completionListener;
+    
+    /**
+     * 音频播放完成回调接口
+     */
+    public interface OnAudioCompletionListener {
+        void onAudioCompletion(String audioFileName);
+    }
+    
+    /**
+     * 设置音频播放完成回调
+     */
+    public void setOnAudioCompletionListener(OnAudioCompletionListener listener) {
+        this.completionListener = listener;
+    }
 
     public RegularAudioPlayer(Context context) {
         this.context = context;
@@ -33,7 +48,7 @@ public class RegularAudioPlayer {
      * @param loop 是否循环播放
      * @return 播放是否成功
      */
-    public boolean playAudio(String audioFileName, float volume, boolean loop) {
+    public boolean playAudio(final String audioFileName, float volume, boolean loop) {
         try {
             Log.d(TAG, "开始播放音频: " + audioFileName + ", 音量: " + volume + ", 循环: " + loop);
 
@@ -125,9 +140,14 @@ public class RegularAudioPlayer {
             mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
-                    Log.d(TAG, "音频播放完成");
+                    Log.d(TAG, "音频播放完成: " + audioFileName);
                     if (!loop) {
                         abandonAudioFocus();
+                    }
+                    
+                    // 调用回调方法
+                    if (completionListener != null) {
+                        completionListener.onAudioCompletion(audioFileName);
                     }
                 }
             });

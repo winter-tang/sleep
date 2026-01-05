@@ -202,6 +202,38 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
       window.logManager.info('1.mp3 暂停播放')
     })
     
+    // 设置Android原生音频播放完成回调
+    window.regularAudioPlayerCallback = (audioFileName) => {
+      window.logManager.info(`Android原生音频播放完成: ${audioFileName}`)
+      if (audioFileName === '1.mp3') {
+        window.logManager.info('1.mp3播放结束，开始播放2.mp3（背景音乐）')
+        
+        // 播放背景音乐（2.mp3）
+        try {
+          const success = window.RegularAudioBridge.playRegularAudio('2.mp3', 0.3, true)
+          if (success) {
+            window.logManager.info('Android原生音频播放2.mp3（背景音乐）成功')
+          } else {
+            const errorMessage = 'Android原生音频播放2.mp3（背景音乐）失败，尝试Web音频'
+            window.logManager.error(errorMessage)
+            showError(errorMessage)
+            // Fallback到Web音频
+            playWebBackgroundAudio()
+          }
+        } catch (err) {
+          const errorMessage = `调用Android原生音频接口播放2.mp3失败: ${err.message}`
+          window.logManager.error('调用Android原生音频接口播放2.mp3失败', {
+            error: err,
+            name: err.name,
+            message: err.message
+          })
+          showError(errorMessage)
+          // Fallback到Web音频
+          playWebBackgroundAudio()
+        }
+      }
+    }
+
     audioRef1.current.addEventListener('ended', () => {
       window.logManager.info('1.mp3 播放结束，开始播放2.mp3')
       window.logManager.info('2.mp3播放前状态检查:', {
@@ -324,36 +356,7 @@ const AudioPlayer = ({ isPlaying, volume = 0.3, playMeditationAudio = true, enab
 
               if (success) {
                 window.logManager.info('Android原生音频播放1.mp3（冥想引导）成功')
-
-                // 设置定时器，在1.mp3播放结束后播放2.mp3
-                // 注意：这里使用固定时间，因为原生音频无法准确获取播放进度
-                setTimeout(() => {
-                  window.logManager.info('1.mp3播放时间结束，开始播放2.mp3（背景音乐）')
-
-                  // 播放背景音乐（2.mp3）
-                  try {
-                    const success = window.RegularAudioBridge.playRegularAudio('2.mp3', 0.3, true)
-                    if (success) {
-                      window.logManager.info('Android原生音频播放2.mp3（背景音乐）成功')
-                    } else {
-                      const errorMessage = 'Android原生音频播放2.mp3（背景音乐）失败，尝试Web音频'
-                      window.logManager.error(errorMessage)
-                      showError(errorMessage)
-                      // Fallback到Web音频
-                      playWebBackgroundAudio()
-                    }
-                  } catch (err) {
-                    const errorMessage = `调用Android原生音频接口播放2.mp3失败: ${err.message}`
-                    window.logManager.error('调用Android原生音频接口播放2.mp3失败', {
-                      error: err,
-                      name: err.name,
-                      message: err.message
-                    })
-                    showError(errorMessage)
-                    // Fallback到Web音频
-                    playWebBackgroundAudio()
-                  }
-                }, 60000) // 假设1.mp3时长为60秒
+                // 音频播放完成后会通过window.regularAudioPlayerCallback回调处理，无需设置定时器
               } else {
                 const errorMessage = 'Android原生音频播放1.mp3（冥想引导）失败，fallback到Web音频'
                 window.logManager.warn(errorMessage)
