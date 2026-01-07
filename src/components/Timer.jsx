@@ -17,7 +17,7 @@ const Timer = ({ duration, timeRemaining, setTimeRemaining, isPlaying }) => {
   }
 
   const handleDurationChange = (minutes) => {
-    setTimeRemaining(minutes) // 现在直接传递分钟数
+    setTimeRemaining(minutes) // 直接传递分钟数
   }
 
   const handleCustomSubmit = (e) => {

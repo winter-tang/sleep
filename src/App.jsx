@@ -125,8 +125,8 @@ function App() {
               window.logManager.info('媒体音量已调回80%')
             }
 
-            // 如果启用了闹钟功能但原生定时器未设置，使用Web闹钟
-            if (enableAlarm && !window.AlarmSchedulerBridge) {
+            // 如果启用了闹钟功能，显示闹钟弹窗
+            if (enableAlarm) {
               if (window.playAlarm) {
                 window.logManager.info('调用window.playAlarm方法')
                 window.playAlarm()
