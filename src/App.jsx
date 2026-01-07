@@ -16,6 +16,8 @@ function App() {
   const [timerDuration, setTimerDuration] = useState(60) // 默认1小时（分钟）
   const [timeRemaining, setTimeRemaining] = useState(60 * 60) // 默认1小时（秒）
   const [timerActive, setTimerActive] = useState(false)
+  const [startTime, setStartTime] = useState(null) // 播放开始的时间戳
+  const [initialDuration, setInitialDuration] = useState(null) // 播放开始时的总时长（秒）
   const [volume, setVolume] = useState(0.5)
   const [isDarkMode, setIsDarkMode] = useState(true) // 默认深色模式，适合夜间使用
   const [playMeditationAudio, setPlayMeditationAudio] = useState(true) // 默认播放冥想引导
@@ -59,60 +61,113 @@ function App() {
     }
   }, [])
 
-  // 计时器逻辑
+  // 计时器逻辑 - 使用基于时间戳的方式，确保锁屏后也能正确计时
   useEffect(() => {
-    window.logManager.debug('计时器效果更新', { isPlaying, timeRemaining })
+    window.logManager.debug('计时器效果更新', { isPlaying, timeRemaining, startTime, initialDuration, enableAlarm })
     let interval = null
-    
-    if (isPlaying && timeRemaining > 0) {
+
+    if (isPlaying) {
+      // 如果是首次播放或从暂停恢复，设置开始时间
+      if (!startTime) {
+        const now = Date.now()
+        // 使用当前剩余时间作为初始时长（支持暂停后恢复）
+        setStartTime(now)
+        setInitialDuration(timeRemaining)
+        window.logManager.info('计时器开始', {
+          startTime: now,
+          initialDuration: timeRemaining
+        })
+
+        // 如果启用了闹钟，设置Android原生定时器
+        if (enableAlarm && window.AlarmSchedulerBridge) {
+          try {
+            const success = window.AlarmSchedulerBridge.scheduleAlarm(timeRemaining, true)
+            window.logManager.info('Android原生定时器设置结果: ' + success)
+          } catch (error) {
+            window.logManager.error('设置Android原生定时器失败', error)
+          }
+        }
+      }
+
+      // 每秒更新一次剩余时间
       interval = setInterval(() => {
         try {
-          setTimeRemaining(prevTime => {
-            if (prevTime <= 1) {
-              setIsPlaying(false)
-              window.logManager.info('计时完成，播放停止')
-              return 0
-            }
-            return prevTime - 1
+          if (!startTime || initialDuration === null) {
+            return
+          }
+
+          const now = Date.now()
+          const elapsed = Math.floor((now - startTime) / 1000) // 已经过的秒数
+          const remaining = Math.max(0, initialDuration - elapsed)
+
+          window.logManager.debug('计时器更新', {
+            elapsed,
+            remaining,
+            initialDuration
           })
+
+          setTimeRemaining(remaining)
+
+          // 如果时间到了，停止播放
+          if (remaining <= 0) {
+            setIsPlaying(false)
+            setStartTime(null)
+            setInitialDuration(null)
+            window.logManager.info('计时完成，播放停止')
+
+            // 记录完整播放时间
+            savePlaybackRecord(timerDuration)
+            window.logManager.info('已记录播放记录', { duration: timerDuration })
+
+            // 无论是否启用闹钟，播放结束后媒体声音都调回80%
+            if (window.setVolumeTo80Percent) {
+              window.setVolumeTo80Percent()
+              window.logManager.info('媒体音量已调回80%')
+            }
+
+            // 如果启用了闹钟功能但原生定时器未设置，使用Web闹钟
+            if (enableAlarm && !window.AlarmSchedulerBridge) {
+              if (window.playAlarm) {
+                window.logManager.info('调用window.playAlarm方法')
+                window.playAlarm()
+              } else {
+                window.logManager.warn('window.playAlarm方法不可用')
+              }
+              // 显示闹钟弹窗
+              setShowAlarmModal(true)
+              window.logManager.info('闹钟弹窗已显示')
+            }
+          }
         } catch (error) {
           window.logManager.error('计时器执行过程中出错', error)
         }
       }, 1000)
-    } else if (timeRemaining === 0) {
-      setIsPlaying(false)
-      
-      // 记录完整播放时间
-      savePlaybackRecord(timerDuration)
-      window.logManager.info('已记录播放记录', { duration: timerDuration })
-      
-      // 无论是否启用闹钟，播放结束后媒体声音都调回80%
-      if (window.setVolumeTo80Percent) {
-        window.setVolumeTo80Percent()
-        window.logManager.info('媒体音量已调回80%')
-      }
-      
-      // 如果启用了闹钟功能，播放闹钟并显示弹窗
-      if (enableAlarm) {
-        if (window.playAlarm) {
-          window.logManager.info('调用window.playAlarm方法')
-          window.playAlarm()
-        } else {
-          window.logManager.warn('window.playAlarm方法不可用')
+    } else {
+      // 暂停时重置开始时间和初始时长，并取消原生定时器
+      if (startTime) {
+        setStartTime(null)
+        setInitialDuration(null)
+        window.logManager.info('计时器暂停', { currentRemaining: timeRemaining })
+
+        // 取消Android原生定时器
+        if (window.AlarmSchedulerBridge) {
+          try {
+            const success = window.AlarmSchedulerBridge.cancelAlarm()
+            window.logManager.info('Android原生定时器取消结果: ' + success)
+          } catch (error) {
+            window.logManager.error('取消Android原生定时器失败', error)
+          }
         }
-        // 显示闹钟弹窗
-        setShowAlarmModal(true)
-        window.logManager.info('闹钟弹窗已显示')
       }
     }
-    
+
     return () => {
       if (interval) {
         clearInterval(interval)
         window.logManager.debug('计时器已清除')
       }
     }
-  }, [isPlaying, timeRemaining, enableAlarm])
+  }, [isPlaying, startTime, initialDuration, enableAlarm, timerDuration])
 
   const handlePlayPause = () => {
     window.logManager.info('播放/暂停按钮被点击', { currentState: isPlaying ? '播放中' : '暂停中' })
@@ -129,6 +184,8 @@ function App() {
     try {
       setTimerDuration(minutes)
       setTimeRemaining(minutes * 60)
+      setStartTime(null) // 重置开始时间
+      setInitialDuration(null) // 重置初始时长
       if (isPlaying) {
         setIsPlaying(false)
         window.logManager.info('计时更改时播放已暂停')

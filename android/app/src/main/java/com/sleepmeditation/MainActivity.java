@@ -57,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
         // 初始化闹钟播放器
         alarmAudioPlayer = new AlarmAudioPlayer(this);
         Log.d(TAG, "闹钟播放器已初始化");
-        
+
         // 初始化普通音频播放器
         regularAudioPlayer = new RegularAudioPlayer(this);
         // 设置音频播放完成监听器
@@ -468,7 +468,9 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
-    
+
+
+
     /**
      * 处理返回键
      */
@@ -484,17 +486,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        
+
         // 停止闹钟
         if (alarmAudioPlayer != null) {
             alarmAudioPlayer.stopAlarm();
         }
-        
+
         // 停止普通音频
         if (regularAudioPlayer != null) {
             regularAudioPlayer.stopAudio();
         }
-        
+
         // 清理WebView
         if (webView != null) {
             webView.clearHistory();
@@ -505,7 +507,7 @@ public class MainActivity extends AppCompatActivity {
             webView.destroyDrawingCache();
             webView.destroy();
         }
-        
+
         Log.d(TAG, "MainActivity已销毁");
     }
     

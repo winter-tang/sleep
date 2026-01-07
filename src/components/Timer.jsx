@@ -48,11 +48,11 @@ const Timer = ({ duration, timeRemaining, setTimeRemaining, isPlaying }) => {
           >
             15分钟
           </button>
-          <button 
-            onClick={() => handleDurationChange(20)} 
-            className={`timer-btn ${Math.floor(timeRemaining / 60) === 20 ? 'active' : ''}`}
+          <button
+            onClick={() => handleDurationChange(25)}
+            className={`timer-btn ${Math.floor(timeRemaining / 60) === 25 ? 'active' : ''}`}
           >
-            20分钟
+            25分钟
           </button>
           <button 
             onClick={() => handleDurationChange(30)} 

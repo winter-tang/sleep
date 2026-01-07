@@ -1,7 +1,7 @@
 {
-  "name": "trae_projects",
+  "name": "SleepMelody",
   "version": "1.1.0",
-  "description": "",
+  "description": "睡眠冥想音频应用",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
