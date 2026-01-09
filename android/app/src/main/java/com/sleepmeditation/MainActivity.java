@@ -11,6 +11,16 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Toast;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,11 +41,18 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
     private static final int PERMISSION_REQUEST_CODE = 1001;
+    private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1002;
+    
+    // 通知渠道ID和名称
+    private static final String CHANNEL_ID = "sleep_meditation_notifications";
+    private static final String CHANNEL_NAME = "睡眠冥想助手通知";
+    private static final String CHANNEL_DESCRIPTION = "睡眠冥想助手的通知";
     
     private WebView webView;
     private AlarmAudioPlayer alarmAudioPlayer;
     private RegularAudioPlayer regularAudioPlayer;
     private boolean permissionsGranted = false;
+    private NotificationManager notificationManager;
     
     // 需要请求的权限
     private static final String[] REQUIRED_PERMISSIONS = {
@@ -79,6 +96,13 @@ public class MainActivity extends AppCompatActivity {
         });
         Log.d(TAG, "普通音频播放器已初始化");
         
+        // 初始化通知管理器
+        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        // 创建通知渠道
+        createNotificationChannel();
+        // 请求通知权限
+        requestNotificationPermission();
+        
         // 获取WebView并配置
         webView = findViewById(R.id.webview);
         if (webView != null) {
@@ -112,6 +136,7 @@ public class MainActivity extends AppCompatActivity {
         // 添加JavaScript接口
         webView.addJavascriptInterface(new AlarmAudioInterface(), "AlarmAudioBridge");
         webView.addJavascriptInterface(new RegularAudioInterface(), "RegularAudioBridge");
+        webView.addJavascriptInterface(new NotificationInterface(), "NotificationBridge");
         Log.d(TAG, "JavaScript接口已添加到WebView");
         
         // 设置WebViewClient
@@ -224,6 +249,110 @@ public class MainActivity extends AppCompatActivity {
     }
     
     /**
+     * 创建通知渠道
+     */
+    private void createNotificationChannel() {
+        // Android 8.0及以上版本需要创建通知渠道
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance);
+            channel.setDescription(CHANNEL_DESCRIPTION);
+            channel.enableVibration(true);
+            channel.enableLights(true);
+
+            // 配置通知渠道
+            notificationManager.createNotificationChannel(channel);
+            Log.d(TAG, "通知渠道已创建: " + CHANNEL_ID + ", 重要性: " + importance);
+        } else {
+            Log.d(TAG, "Android版本低于8.0，无需创建通知渠道");
+        }
+    }
+    
+    /**
+     * 请求通知权限
+     */
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) 
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(
+                        this,
+                        new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
+                        NOTIFICATION_PERMISSION_REQUEST_CODE
+                );
+                Log.d(TAG, "请求通知权限");
+            } else {
+                Log.d(TAG, "通知权限已授予");
+            }
+        }
+    }
+    
+    /**
+     * 发送通知
+     */
+    private void sendNotificationInternal(String title, String body) {
+        try {
+            // 检查 notificationManager 是否已初始化
+            if (notificationManager == null) {
+                Log.e(TAG, "notificationManager 未初始化");
+                return;
+            }
+
+            // 检查通知权限
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    Log.w(TAG, "没有通知权限，无法发送通知");
+                    return;
+                }
+            }
+
+            Log.d(TAG, "开始发送通知: " + title + " - " + body);
+
+            // 创建通知意图
+            Intent intent = new Intent(this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            PendingIntent pendingIntent = PendingIntent.getActivity(
+                    this,
+                    0,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            // 构建通知
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                    .setContentTitle(title)
+                    .setContentText(body)
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setCategory(NotificationCompat.CATEGORY_ALARM)
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+                    .setVibrate(new long[]{0, 500, 200, 500}) // 震动模式
+                    .setOngoing(false);
+
+            // 发送通知
+            notificationManager.notify(1, builder.build());
+            Log.d(TAG, "通知已发送到系统: ID=1, 标题=" + title + ", 内容=" + body);
+
+            // 验证通知渠道状态
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationChannel channel = notificationManager.getNotificationChannel(CHANNEL_ID);
+                if (channel != null) {
+                    Log.d(TAG, "通知渠道状态: ID=" + channel.getId() +
+                            ", 重要性=" + channel.getImportance() +
+                            ", 启用灯光=" + channel.shouldShowLights() +
+                            ", 启用震动=" + channel.shouldVibrate());
+                }
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "发送通知时发生异常: " + e.getMessage(), e);
+            e.printStackTrace();
+        }
+    }
+    
+    /**
      * 获取MIME类型
      */
     private String getMimeType(String path) {
@@ -283,33 +412,42 @@ public class MainActivity extends AppCompatActivity {
      * 权限请求结果处理
      */
     @Override
-    public void onRequestPermissionsResult(int requestCode, 
+    public void onRequestPermissionsResult(int requestCode,
             @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        
+
         if (requestCode == PERMISSION_REQUEST_CODE) {
             permissionsGranted = true;
-            
+
             // 检查权限授予结果
             for (int i = 0; i < permissions.length; i++) {
                 String permission = permissions[i];
                 int result = grantResults[i];
-                
+
                 if (result != PackageManager.PERMISSION_GRANTED) {
                     permissionsGranted = false;
                     Log.w(TAG, "权限被拒绝: " + permission);
-                    
+
                     // 显示提示信息
-                    Toast.makeText(this, 
-                            "需要" + permission + "权限才能正常使用闹钟功能", 
+                    Toast.makeText(this,
+                            "需要" + permission + "权限才能正常使用闹钟功能",
                             Toast.LENGTH_SHORT).show();
                 } else {
                     Log.d(TAG, "权限已授予: " + permission);
                 }
             }
-            
+
             if (permissionsGranted) {
                 Log.d(TAG, "所有权限请求已通过");
+            }
+        } else if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            // 处理通知权限请求结果
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "通知权限已授予");
+                Toast.makeText(this, "通知权限已授予", Toast.LENGTH_SHORT).show();
+            } else {
+                Log.w(TAG, "通知权限被拒绝");
+                Toast.makeText(this, "通知权限被拒绝，无法发送通知", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -373,7 +511,7 @@ public class MainActivity extends AppCompatActivity {
             return permissionsGranted;
         }
     }
-    
+
     /**
      * JavaScript接口类，用于处理普通音频播放请求
      */
@@ -469,6 +607,34 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * JavaScript接口类，用于处理通知功能
+     */
+    private class NotificationInterface {
+
+        @android.webkit.JavascriptInterface
+        public boolean sendNotification(final String title, final String body) {
+            Log.d(TAG, "JavaScript调用NotificationBridge.sendNotification，标题: " + title + ", 内容: " + body);
+
+            try {
+                // 在主线程中发送通知
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            sendNotificationInternal(title, body);
+                        } catch (Exception e) {
+                            Log.e(TAG, "在主线程发送通知时发生异常: " + e.getMessage(), e);
+                        }
+                    }
+                });
+                return true;
+            } catch (Exception e) {
+                Log.e(TAG, "发送通知时发生异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
+    }
 
 
     /**

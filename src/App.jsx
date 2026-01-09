@@ -31,6 +31,13 @@ function App() {
   useEffect(() => {
     window.logManager.info('应用初始化开始')
     try {
+      // 检测通知桥接接口
+      if (window.NotificationBridge) {
+        window.logManager.info('NotificationBridge 接口可用')
+      } else {
+        window.logManager.warn('NotificationBridge 接口不可用（仅在Android平台上可用）')
+      }
+
       // 恢复保存的设置
       const savedVolume = localStorage.getItem('volume')
       const savedTheme = localStorage.getItem('theme')
@@ -61,27 +68,24 @@ function App() {
     }
   }, [])
 
-  // 计时器逻辑 - 使用基于时间戳的方式，确保锁屏后也能正确计时
+  // 计时器逻辑 - 使用相对时间跟踪，避免系统时间调整导致的问题
   useEffect(() => {
     window.logManager.debug('计时器效果更新', { isPlaying, timeRemaining, startTime, initialDuration, enableAlarm })
     let interval = null
+    let elapsedSeconds = 0
+    let remainingTime = timeRemaining
 
     if (isPlaying) {
-      // 如果是首次播放或从暂停恢复，设置开始时间
+      // 如果是首次播放或从暂停恢复，重置计时
       if (!startTime) {
-        const now = Date.now()
-        // 使用当前剩余时间作为初始时长（支持暂停后恢复）
-        setStartTime(now)
-        setInitialDuration(timeRemaining)
         window.logManager.info('计时器开始', {
-          startTime: now,
-          initialDuration: timeRemaining
+          initialRemainingTime: remainingTime
         })
 
         // 如果启用了闹钟，设置Android原生定时器
         if (enableAlarm && window.AlarmSchedulerBridge) {
           try {
-            const success = window.AlarmSchedulerBridge.scheduleAlarm(timeRemaining, true)
+            const success = window.AlarmSchedulerBridge.scheduleAlarm(remainingTime, true)
             window.logManager.info('Android原生定时器设置结果: ' + success)
           } catch (error) {
             window.logManager.error('设置Android原生定时器失败', error)
@@ -92,71 +96,101 @@ function App() {
       // 每秒更新一次剩余时间
       interval = setInterval(() => {
         try {
-          if (!startTime || initialDuration === null) {
-            return
-          }
-
-          const now = Date.now()
-          const elapsed = Math.floor((now - startTime) / 1000) // 已经过的秒数
-          const remaining = Math.max(0, initialDuration - elapsed)
+          elapsedSeconds++
+          remainingTime = Math.max(0, timeRemaining - elapsedSeconds)
 
           window.logManager.debug('计时器更新', {
-            elapsed,
-            remaining,
-            initialDuration
+            elapsedSeconds,
+            remainingTime,
+            initialTime: timeRemaining
           })
 
-          setTimeRemaining(remaining)
+          setTimeRemaining(remainingTime)
 
           // 如果时间到了，停止播放
-          if (remaining <= 0) {
-            setIsPlaying(false)
-            setStartTime(null)
-            setInitialDuration(null)
-            window.logManager.info('计时完成，播放停止')
+            if (remainingTime <= 0) {
+              setIsPlaying(false)
+              window.logManager.info('计时完成，播放停止')
 
-            // 记录完整播放时间
-            savePlaybackRecord(timerDuration)
-            window.logManager.info('已记录播放记录', { duration: timerDuration })
+              // 记录完整播放时间
+              savePlaybackRecord(timerDuration)
+              window.logManager.info('已记录播放记录', { duration: timerDuration })
 
-            // 无论是否启用闹钟，播放结束后媒体声音都调回80%
-            if (window.setVolumeTo80Percent) {
-              window.setVolumeTo80Percent()
-              window.logManager.info('媒体音量已调回80%')
-            }
-
-            // 如果启用了闹钟功能，显示闹钟弹窗
-            if (enableAlarm) {
-              if (window.playAlarm) {
-                window.logManager.info('调用window.playAlarm方法')
-                window.playAlarm()
-              } else {
-                window.logManager.warn('window.playAlarm方法不可用')
+              // 无论是否启用闹钟，播放结束后媒体声音都调回80%
+              if (window.setVolumeTo80Percent) {
+                window.setVolumeTo80Percent()
+                window.logManager.info('媒体音量已调回80%')
               }
-              // 显示闹钟弹窗
-              setShowAlarmModal(true)
-              window.logManager.info('闹钟弹窗已显示')
+
+              // 显示播放结束通知
+              const endTime = new Date()
+              const endTimeString = endTime.toLocaleTimeString()
+              const notificationTitle = '睡眠冥想助手'
+              const notificationBody = `冥想已结束\n设置时长：${timerDuration}分钟\n结束时间：${endTimeString}`
+              
+              // 发送通知
+              try {
+                // Web平台通知
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification(notificationTitle, {
+                    body: notificationBody,
+                    icon: '/icons/icon-192x192.png',
+                    badge: '/icons/icon-72x72.png'
+                  })
+                  window.logManager.info('Web通知已发送', { title: notificationTitle, body: notificationBody })
+                } else if ('Notification' in window && Notification.permission !== 'denied') {
+                  // 请求通知权限
+                  Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                      new Notification(notificationTitle, {
+                        body: notificationBody,
+                        icon: '/icons/icon-192x192.png',
+                        badge: '/icons/icon-72x72.png'
+                      })
+                      window.logManager.info('Web通知已发送', { title: notificationTitle, body: notificationBody })
+                    }
+                  })
+                }
+                
+                // Android平台通知
+                if (window.NotificationBridge && window.NotificationBridge.sendNotification) {
+                  window.NotificationBridge.sendNotification(notificationTitle, notificationBody)
+                  window.logManager.info('Android通知已发送', { title: notificationTitle, body: notificationBody })
+                } else {
+                  window.logManager.warn('NotificationBridge.sendNotification方法不可用')
+                }
+              } catch (error) {
+                window.logManager.error('发送通知时出错', error)
+              }
+
+              // 如果启用了闹钟功能，显示闹钟弹窗
+              if (enableAlarm) {
+                if (window.playAlarm) {
+                  window.logManager.info('调用window.playAlarm方法')
+                  window.playAlarm()
+                } else {
+                  window.logManager.warn('window.playAlarm方法不可用')
+                }
+                // 显示闹钟弹窗
+                setShowAlarmModal(true)
+                window.logManager.info('闹钟弹窗已显示')
+              }
             }
-          }
         } catch (error) {
           window.logManager.error('计时器执行过程中出错', error)
         }
       }, 1000)
     } else {
-      // 暂停时重置开始时间和初始时长，并取消原生定时器
-      if (startTime) {
-        setStartTime(null)
-        setInitialDuration(null)
-        window.logManager.info('计时器暂停', { currentRemaining: timeRemaining })
+      // 暂停时重置计时
+      window.logManager.info('计时器暂停', { currentRemaining: timeRemaining })
 
-        // 取消Android原生定时器
-        if (window.AlarmSchedulerBridge) {
-          try {
-            const success = window.AlarmSchedulerBridge.cancelAlarm()
-            window.logManager.info('Android原生定时器取消结果: ' + success)
-          } catch (error) {
-            window.logManager.error('取消Android原生定时器失败', error)
-          }
+      // 取消Android原生定时器
+      if (window.AlarmSchedulerBridge) {
+        try {
+          const success = window.AlarmSchedulerBridge.cancelAlarm()
+          window.logManager.info('Android原生定时器取消结果: ' + success)
+        } catch (error) {
+          window.logManager.error('取消Android原生定时器失败', error)
         }
       }
     }
@@ -167,7 +201,7 @@ function App() {
         window.logManager.debug('计时器已清除')
       }
     }
-  }, [isPlaying, startTime, initialDuration, enableAlarm, timerDuration])
+  }, [isPlaying, timeRemaining, enableAlarm, timerDuration])
 
   const handlePlayPause = () => {
     window.logManager.info('播放/暂停按钮被点击', { currentState: isPlaying ? '播放中' : '暂停中' })
