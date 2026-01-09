@@ -68,7 +68,7 @@ const LogViewer = ({ isVisible, onClose }) => {
       const a = document.createElement('a');
       a.href = url;
       a.download = `app-logs-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`;
-      
+
       try {
         // 确保document.body存在
         if (document.body) {
@@ -84,8 +84,53 @@ const LogViewer = ({ isVisible, onClose }) => {
         console.warn('DOM操作失败，可能是在测试环境中:', error);
         a.click();
       }
-      
+
       URL.revokeObjectURL(url);
+    }
+  };
+
+  // 测试通知功能
+  const testNotification = () => {
+    try {
+      window.logManager.info('开始测试通知功能');
+
+      // Android平台通知
+      if (window.NotificationBridge && window.NotificationBridge.sendNotification) {
+        const result = window.NotificationBridge.sendNotification(
+          '测试通知',
+          '这是一条测试通知消息\n时间: ' + new Date().toLocaleTimeString()
+        );
+        window.logManager.info('Android通知测试结果: ' + result);
+      } else {
+        window.logManager.warn('NotificationBridge 不可用');
+      }
+
+      // Web平台通知
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          new Notification('测试通知', {
+            body: '这是一条测试通知消息\n时间: ' + new Date().toLocaleTimeString(),
+            icon: '/icons/icon-192x192.png'
+          });
+          window.logManager.info('Web通知已发送');
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification('测试通知', {
+                body: '这是一条测试通知消息\n时间: ' + new Date().toLocaleTimeString(),
+                icon: '/icons/icon-192x192.png'
+              });
+              window.logManager.info('Web通知已发送（权限已授予）');
+            }
+          });
+        } else {
+          window.logManager.warn('Web通知权限被拒绝');
+        }
+      } else {
+        window.logManager.warn('Web通知API不可用');
+      }
+    } catch (error) {
+      window.logManager.error('测试通知时出错', error);
     }
   };
 
@@ -132,13 +177,14 @@ const LogViewer = ({ isVisible, onClose }) => {
           
           <div className="action-controls">
             <label>
-              <input 
-                type="checkbox" 
-                checked={autoScroll} 
-                onChange={(e) => setAutoScroll(e.target.checked)} 
+              <input
+                type="checkbox"
+                checked={autoScroll}
+                onChange={(e) => setAutoScroll(e.target.checked)}
               />
               自动滚动
             </label>
+            <button onClick={testNotification}>测试通知</button>
             <button onClick={clearLogs}>清空日志</button>
             <button onClick={exportLogs}>导出日志</button>
           </div>
