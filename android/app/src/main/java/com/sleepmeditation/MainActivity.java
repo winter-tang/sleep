@@ -53,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private RegularAudioPlayer regularAudioPlayer;
     private boolean permissionsGranted = false;
     private NotificationManager notificationManager;
+    private AlarmScheduler alarmScheduler;
     
     // 需要请求的权限
     private static final String[] REQUIRED_PERMISSIONS = {
@@ -102,6 +103,10 @@ public class MainActivity extends AppCompatActivity {
         createNotificationChannel();
         // 请求通知权限
         requestNotificationPermission();
+
+        // 初始化闹钟调度器
+        alarmScheduler = new AlarmScheduler(this);
+        Log.d(TAG, "闹钟调度器已初始化");
         
         // 获取WebView并配置
         webView = findViewById(R.id.webview);
@@ -137,6 +142,7 @@ public class MainActivity extends AppCompatActivity {
         webView.addJavascriptInterface(new AlarmAudioInterface(), "AlarmAudioBridge");
         webView.addJavascriptInterface(new RegularAudioInterface(), "RegularAudioBridge");
         webView.addJavascriptInterface(new NotificationInterface(), "NotificationBridge");
+        webView.addJavascriptInterface(new AlarmSchedulerInterface(), "AlarmSchedulerBridge");
         Log.d(TAG, "JavaScript接口已添加到WebView");
         
         // 设置WebViewClient
@@ -631,6 +637,46 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } catch (Exception e) {
                 Log.e(TAG, "发送通知时发生异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * JavaScript接口类，用于处理闹钟调度功能
+     */
+    private class AlarmSchedulerInterface {
+
+        @android.webkit.JavascriptInterface
+        public boolean scheduleAlarm(int delayInSeconds, boolean enableVibration) {
+            Log.d(TAG, "JavaScript调用AlarmSchedulerBridge.scheduleAlarm，延迟: " + delayInSeconds + "秒, 启用震动: " + enableVibration);
+
+            try {
+                if (alarmScheduler != null) {
+                    return alarmScheduler.scheduleAlarm(delayInSeconds, enableVibration);
+                } else {
+                    Log.e(TAG, "alarmScheduler 未初始化");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "设置闹钟时发生异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public boolean cancelAlarm() {
+            Log.d(TAG, "JavaScript调用AlarmSchedulerBridge.cancelAlarm");
+
+            try {
+                if (alarmScheduler != null) {
+                    return alarmScheduler.cancelAlarm();
+                } else {
+                    Log.e(TAG, "alarmScheduler 未初始化");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "取消闹钟时发生异常: " + e.getMessage(), e);
                 return false;
             }
         }

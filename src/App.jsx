@@ -22,6 +22,7 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(true) // 默认深色模式，适合夜间使用
   const [playMeditationAudio, setPlayMeditationAudio] = useState(true) // 默认播放冥想引导
   const [enableAlarm, setEnableAlarm] = useState(false) // 默认不启用闹钟功能
+  const [enableVibration, setEnableVibration] = useState(true) // 默认启用震动功能
   const [showInstructions, setShowInstructions] = useState(false) // 控制功能说明模态框显示
   const [showPlaybackHistory, setShowPlaybackHistory] = useState(false) // 控制播放记录模态框显示
   const [showAlarmModal, setShowAlarmModal] = useState(false) // 控制闹钟弹窗显示
@@ -42,11 +43,13 @@ function App() {
       const savedVolume = localStorage.getItem('volume')
       const savedTheme = localStorage.getItem('theme')
       const savedPlayMeditationAudio = localStorage.getItem('playMeditationAudio')
+      const savedEnableVibration = localStorage.getItem('enableVibration')
       
       window.logManager.debug('加载保存的设置', {
         savedVolume,
         savedTheme,
-        savedPlayMeditationAudio
+        savedPlayMeditationAudio,
+        savedEnableVibration
       })
       
       if (savedVolume) {
@@ -60,6 +63,10 @@ function App() {
       if (savedPlayMeditationAudio !== null) {
         setPlayMeditationAudio(savedPlayMeditationAudio === 'true')
         window.logManager.info('冥想音乐设置已恢复', { playMeditationAudio: savedPlayMeditationAudio === 'true' })
+      }
+      if (savedEnableVibration !== null) {
+        setEnableVibration(savedEnableVibration === 'true')
+        window.logManager.info('震动设置已恢复', { enableVibration: savedEnableVibration === 'true' })
       }
       
       window.logManager.info('应用初始化完成')
@@ -85,8 +92,8 @@ function App() {
         // 如果启用了闹钟，设置Android原生定时器
         if (enableAlarm && window.AlarmSchedulerBridge) {
           try {
-            const success = window.AlarmSchedulerBridge.scheduleAlarm(remainingTime, true)
-            window.logManager.info('Android原生定时器设置结果: ' + success)
+            const success = window.AlarmSchedulerBridge.scheduleAlarm(remainingTime, enableVibration)
+            window.logManager.info('Android原生定时器设置结果: ' + success + ', 震动设置: ' + enableVibration)
           } catch (error) {
             window.logManager.error('设置Android原生定时器失败', error)
           }
@@ -281,6 +288,19 @@ function App() {
     }
   }
 
+  const toggleVibration = () => {
+    window.logManager.info('切换震动功能设置')
+    try {
+      const newValue = !enableVibration
+      setEnableVibration(newValue)
+      // 保存震动设置
+      localStorage.setItem('enableVibration', newValue)
+      window.logManager.info('震动功能已更新并保存', { enableVibration: newValue })
+    } catch (error) {
+      window.logManager.error('切换震动功能时出错', error)
+    }
+  }
+
   const toggleInstructions = () => {
     window.logManager.info('切换功能说明模态框显示状态', { currentState: showInstructions ? '打开' : '关闭' })
     try {
@@ -379,6 +399,21 @@ function App() {
             </label>
           </div>
 
+          <div className="audio-toggle-container">
+            <label className="audio-toggle-label">
+              <input
+                type="checkbox"
+                checked={enableVibration}
+                onChange={toggleVibration}
+                className="audio-toggle-checkbox"
+              />
+              <span className="audio-toggle-switch">
+                <span className="audio-toggle-slider"></span>
+              </span>
+              <span className="audio-toggle-text">启用震动</span>
+            </label>
+          </div>
+
           <VolumeControl onVolumeChange={handleVolumeChange} />
         </div>
 
@@ -464,6 +499,12 @@ function App() {
                  <p>• 定时结束时可以选择播放闹钟提醒</p>
                  <p>• 闹钟音量设为80%以确保您能听到</p>
                  <p>• 无论是否启用闹钟功能，播放结束后媒体声音都会自动调回80%</p>
+               </div>
+               <div className="instruction-section">
+                 <h3>📳 震动功能</h3>
+                 <p>• 定时结束时可以选择启用震动提醒</p>
+                 <p>• 震动模式为：震动500ms，停止500ms，重复</p>
+                 <p>• 震动功能默认启用，可在设置中关闭</p>
                </div>
               <div className="instruction-section">
                 <h3>🎨 主题切换</h3>
