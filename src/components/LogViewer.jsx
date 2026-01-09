@@ -89,48 +89,33 @@ const LogViewer = ({ isVisible, onClose }) => {
     }
   };
 
-  // 测试通知功能
-  const testNotification = () => {
+  // 测试震动功能
+  const testVibration = () => {
     try {
-      window.logManager.info('开始测试通知功能');
+      window.logManager.info('开始测试震动功能');
 
-      // Android平台通知
-      if (window.NotificationBridge && window.NotificationBridge.sendNotification) {
-        const result = window.NotificationBridge.sendNotification(
-          '测试通知',
-          '这是一条测试通知消息\n时间: ' + new Date().toLocaleTimeString()
-        );
-        window.logManager.info('Android通知测试结果: ' + result);
+      // Android平台震动
+      if (window.AlarmSchedulerBridge && window.AlarmSchedulerBridge.scheduleAlarm) {
+        // 设置1秒后触发的闹钟，启用震动
+        const result = window.AlarmSchedulerBridge.scheduleAlarm(1, true);
+        window.logManager.info('Android震动测试结果: ' + result);
       } else {
-        window.logManager.warn('NotificationBridge 不可用');
+        window.logManager.warn('AlarmSchedulerBridge 不可用');
       }
 
-      // Web平台通知
-      if ('Notification' in window) {
-        if (Notification.permission === 'granted') {
-          new Notification('测试通知', {
-            body: '这是一条测试通知消息\n时间: ' + new Date().toLocaleTimeString(),
-            icon: '/icons/icon-192x192.png'
-          });
-          window.logManager.info('Web通知已发送');
-        } else if (Notification.permission !== 'denied') {
-          Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-              new Notification('测试通知', {
-                body: '这是一条测试通知消息\n时间: ' + new Date().toLocaleTimeString(),
-                icon: '/icons/icon-192x192.png'
-              });
-              window.logManager.info('Web通知已发送（权限已授予）');
-            }
-          });
-        } else {
-          window.logManager.warn('Web通知权限被拒绝');
+      // Web平台震动（如果支持）
+      if ('vibrate' in navigator) {
+        try {
+          navigator.vibrate([500, 500, 500]); // 震动500ms，停止500ms，震动500ms
+          window.logManager.info('Web震动已触发');
+        } catch (error) {
+          window.logManager.warn('Web震动失败: ' + error.message);
         }
       } else {
-        window.logManager.warn('Web通知API不可用');
+        window.logManager.warn('Web震动API不可用');
       }
     } catch (error) {
-      window.logManager.error('测试通知时出错', error);
+      window.logManager.error('测试震动时出错', error);
     }
   };
 
@@ -184,7 +169,7 @@ const LogViewer = ({ isVisible, onClose }) => {
               />
               自动滚动
             </label>
-            <button onClick={testNotification}>测试通知</button>
+            <button onClick={testVibration}>测试震动</button>
             <button onClick={clearLogs}>清空日志</button>
             <button onClick={exportLogs}>导出日志</button>
           </div>
