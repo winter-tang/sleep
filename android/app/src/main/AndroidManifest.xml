@@ -66,6 +66,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- 定时器接收器 -->
+        <receiver android:name=".TimerReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.sleepmeditation.TIMER_TRIGGER" />
+            </intent-filter>
+        </receiver>
+
         <!-- 闹钟服务 -->
         <service android:name=".AlarmService"
             android:enabled="true"

@@ -254,4 +254,51 @@ public class AlarmAudioPlayer {
             return false;
         }
     }
+
+    /**
+     * 测试震动（只震动，不播放音频）
+     * @return 是否成功
+     */
+    public boolean testVibration() {
+        try {
+            Log.d(TAG, "开始测试震动");
+
+            // 检查 vibrator 是否存在
+            if (vibrator == null) {
+                Log.e(TAG, "震动测试失败: Vibrator 服务未初始化");
+                return false;
+            }
+
+            // 检查设备是否支持震动
+            if (!vibrator.hasVibrator()) {
+                Log.w(TAG, "震动测试失败: 设备不支持震动功能");
+                return false;
+            }
+
+            // 创建一次性震动模式：震动500ms，停止200ms，震动500ms
+            long[] pattern = {0, 500, 200, 500};
+
+            Log.d(TAG, "触发震动: pattern=" + java.util.Arrays.toString(pattern));
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                // Android 8.0及以上版本，使用 VibrationEffect
+                VibrationEffect effect = VibrationEffect.createWaveform(pattern, -1);
+                vibrator.vibrate(effect);
+                Log.d(TAG, "使用 VibrationEffect 触发震动");
+            } else {
+                // 旧版本Android
+                vibrator.vibrate(pattern, -1);
+                Log.d(TAG, "使用传统方式触发震动");
+            }
+
+            Log.d(TAG, "震动测试成功");
+            return true;
+        } catch (SecurityException e) {
+            Log.e(TAG, "震动测试失败: 没有震动权限", e);
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "震动测试失败: " + e.getMessage(), e);
+            return false;
+        }
+    }
 }

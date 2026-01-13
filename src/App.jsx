@@ -8,7 +8,7 @@ import PlaybackHistoryViewer from './components/PlaybackHistoryViewer'
 import AlarmModal from './components/AlarmModal'
 import LogViewer from './components/LogViewer'
 import StatisticsIcon from './assets/StatisticsIcon'
-import { savePlaybackRecord } from './utils/PlaybackHistory'
+import { initDatabase, savePlaybackRecord, getActiveTimerSession, saveTimerSession, updateTimerSession, getPlaybackHistory, getTotalPlays } from './utils/DatabaseManager'
 import './utils/LogManager' // 初始化日志管理器
 
 function App() {
@@ -30,77 +30,120 @@ function App() {
   
   // 初始化应用
   useEffect(() => {
-    window.logManager.info('应用初始化开始')
-    try {
-      // 检测通知桥接接口
-      if (window.NotificationBridge) {
-        window.logManager.info('NotificationBridge 接口可用')
-      } else {
-        window.logManager.warn('NotificationBridge 接口不可用（仅在Android平台上可用）')
-      }
+    const initializeApp = async () => {
+      window.logManager.info('应用初始化开始')
+      try {
+        // 初始化数据库
+        await initDatabase()
+        window.logManager.info('数据库初始化成功')
 
-      // 恢复保存的设置
-      const savedVolume = localStorage.getItem('volume')
-      const savedTheme = localStorage.getItem('theme')
-      const savedPlayMeditationAudio = localStorage.getItem('playMeditationAudio')
-      const savedEnableVibration = localStorage.getItem('enableVibration')
-      
-      window.logManager.debug('加载保存的设置', {
-        savedVolume,
-        savedTheme,
-        savedPlayMeditationAudio,
-        savedEnableVibration
-      })
-      
-      if (savedVolume) {
-        setVolume(parseFloat(savedVolume))
-        window.logManager.info('音量设置已恢复', { volume: parseFloat(savedVolume) })
+        // 检测通知桥接接口
+        if (window.NotificationBridge) {
+          window.logManager.info('NotificationBridge 接口可用')
+        } else {
+          window.logManager.warn('NotificationBridge 接口不可用（仅在Android平台上可用）')
+        }
+
+        // 恢复保存的设置
+        const savedVolume = localStorage.getItem('volume')
+        const savedTheme = localStorage.getItem('theme')
+        const savedPlayMeditationAudio = localStorage.getItem('playMeditationAudio')
+        const savedEnableVibration = localStorage.getItem('enableVibration')
+        
+        window.logManager.debug('加载保存的设置', {
+          savedVolume,
+          savedTheme,
+          savedPlayMeditationAudio,
+          savedEnableVibration
+        })
+        
+        if (savedVolume) {
+          setVolume(parseFloat(savedVolume))
+          window.logManager.info('音量设置已恢复', { volume: parseFloat(savedVolume) })
+        }
+        if (savedTheme) {
+          setIsDarkMode(savedTheme === 'dark-theme')
+          window.logManager.info('主题设置已恢复', { theme: savedTheme })
+        }
+        if (savedPlayMeditationAudio !== null) {
+          setPlayMeditationAudio(savedPlayMeditationAudio === 'true')
+          window.logManager.info('冥想音乐设置已恢复', { playMeditationAudio: savedPlayMeditationAudio === 'true' })
+        }
+        if (savedEnableVibration !== null) {
+          setEnableVibration(savedEnableVibration === 'true')
+          window.logManager.info('震动设置已恢复', { enableVibration: savedEnableVibration === 'true' })
+        }
+
+        // 加载活跃的定时器会话
+        const activeSession = await getActiveTimerSession()
+        if (activeSession) {
+          window.logManager.info('加载到活跃的定时器会话', activeSession)
+          setTimerDuration(activeSession.duration)
+          setTimeRemaining(activeSession.remainingTime)
+          setIsPlaying(true)
+          setStartTime(new Date(activeSession.startTime).getTime())
+          setInitialDuration(activeSession.duration * 60)
+        }
+        
+        window.logManager.info('应用初始化完成')
+      } catch (error) {
+        window.logManager.error('应用初始化过程中出错', error)
       }
-      if (savedTheme) {
-        setIsDarkMode(savedTheme === 'dark-theme')
-        window.logManager.info('主题设置已恢复', { theme: savedTheme })
-      }
-      if (savedPlayMeditationAudio !== null) {
-        setPlayMeditationAudio(savedPlayMeditationAudio === 'true')
-        window.logManager.info('冥想音乐设置已恢复', { playMeditationAudio: savedPlayMeditationAudio === 'true' })
-      }
-      if (savedEnableVibration !== null) {
-        setEnableVibration(savedEnableVibration === 'true')
-        window.logManager.info('震动设置已恢复', { enableVibration: savedEnableVibration === 'true' })
-      }
-      
-      window.logManager.info('应用初始化完成')
-    } catch (error) {
-      window.logManager.error('应用初始化过程中出错', error)
     }
+
+    initializeApp()
   }, [])
 
-  // 计时器逻辑 - 使用相对时间跟踪，避免系统时间调整导致的问题
+  // 会话ID状态
+  const [sessionId, setSessionId] = useState(null)
+
+  // 计时器逻辑 - 使用Android原生定时器确保后台/锁屏时也能准确触发
   useEffect(() => {
-    window.logManager.debug('计时器效果更新', { isPlaying, timeRemaining, startTime, initialDuration, enableAlarm })
+    window.logManager.debug('计时器效果更新', { isPlaying, timeRemaining, startTime, initialDuration, enableAlarm, enableVibration, sessionId })
     let interval = null
     let elapsedSeconds = 0
     let remainingTime = timeRemaining
 
     if (isPlaying) {
-      // 如果是首次播放或从暂停恢复，重置计时
+      // 如果是首次播放或从暂停恢复，设置Android原生定时器
       if (!startTime) {
         window.logManager.info('计时器开始', {
-          initialRemainingTime: remainingTime
+          initialRemainingTime: remainingTime,
+          enableAlarm,
+          enableVibration,
+          timerDuration
         })
 
-        // 如果启用了闹钟，设置Android原生定时器
-        if (enableAlarm && window.AlarmSchedulerBridge) {
+        // 创建数据库会话
+        const createSession = async () => {
           try {
-            const success = window.AlarmSchedulerBridge.scheduleAlarm(remainingTime, enableVibration)
-            window.logManager.info('Android原生定时器设置结果: ' + success + ', 震动设置: ' + enableVibration)
+            const id = await saveTimerSession(timerDuration, 'active')
+            setSessionId(id)
+            window.logManager.info('数据库会话创建成功', { sessionId: id })
+          } catch (error) {
+            window.logManager.error('创建数据库会话失败', error)
+          }
+        }
+        createSession()
+
+        // 设置Android原生定时器（确保后台/锁屏时也能准确触发）
+        if (window.TimerSchedulerBridge && window.TimerSchedulerBridge.scheduleTimer) {
+          try {
+            const success = window.TimerSchedulerBridge.scheduleTimer(remainingTime, enableAlarm, enableVibration, timerDuration)
+            window.logManager.info('Android原生定时器设置结果: ' + success + ', 启用闹钟: ' + enableAlarm + ', 启用震动: ' + enableVibration + ', 时长: ' + timerDuration + '分钟')
           } catch (error) {
             window.logManager.error('设置Android原生定时器失败', error)
           }
+        } else {
+          window.logManager.warn('TimerSchedulerBridge 不可用，使用JavaScript计时器（不可靠）')
         }
+
+        // 设置开始时间，用于UI显示
+        setStartTime(Date.now())
+        setInitialDuration(remainingTime)
       }
 
-      // 每秒更新一次剩余时间
+      // 每秒更新一次剩余时间（仅用于UI显示，实际定时由Android原生定时器控制）
       interval = setInterval(() => {
         try {
           elapsedSeconds++
@@ -114,92 +157,43 @@ function App() {
 
           setTimeRemaining(remainingTime)
 
-          // 如果时间到了，停止播放
-            if (remainingTime <= 0) {
-              setIsPlaying(false)
-              window.logManager.info('计时完成，播放停止')
+          // 更新数据库会话的剩余时间
+          if (sessionId) {
+            updateTimerSession(sessionId, { remainingTime })
+              .catch(error => window.logManager.error('更新数据库会话失败', error))
+          }
 
-              // 记录完整播放时间
-              savePlaybackRecord(timerDuration)
-              window.logManager.info('已记录播放记录', { duration: timerDuration })
-
-              // 无论是否启用闹钟，播放结束后媒体声音都调回80%
-              if (window.setVolumeTo80Percent) {
-                window.setVolumeTo80Percent()
-                window.logManager.info('媒体音量已调回80%')
-              }
-
-              // 显示播放结束通知
-              const endTime = new Date()
-              const endTimeString = endTime.toLocaleTimeString()
-              const notificationTitle = '睡眠冥想助手'
-              const notificationBody = `冥想已结束\n设置时长：${timerDuration}分钟\n结束时间：${endTimeString}`
-              
-              // 发送通知
-              try {
-                // Web平台通知
-                if ('Notification' in window && Notification.permission === 'granted') {
-                  new Notification(notificationTitle, {
-                    body: notificationBody,
-                    icon: '/icons/icon-192x192.png',
-                    badge: '/icons/icon-72x72.png'
-                  })
-                  window.logManager.info('Web通知已发送', { title: notificationTitle, body: notificationBody })
-                } else if ('Notification' in window && Notification.permission !== 'denied') {
-                  // 请求通知权限
-                  Notification.requestPermission().then(permission => {
-                    if (permission === 'granted') {
-                      new Notification(notificationTitle, {
-                        body: notificationBody,
-                        icon: '/icons/icon-192x192.png',
-                        badge: '/icons/icon-72x72.png'
-                      })
-                      window.logManager.info('Web通知已发送', { title: notificationTitle, body: notificationBody })
-                    }
-                  })
-                }
-                
-                // Android平台通知
-                if (window.NotificationBridge && window.NotificationBridge.sendNotification) {
-                  window.NotificationBridge.sendNotification(notificationTitle, notificationBody)
-                  window.logManager.info('Android通知已发送', { title: notificationTitle, body: notificationBody })
-                } else {
-                  window.logManager.warn('NotificationBridge.sendNotification方法不可用')
-                }
-              } catch (error) {
-                window.logManager.error('发送通知时出错', error)
-              }
-
-              // 如果启用了闹钟功能，显示闹钟弹窗
-              if (enableAlarm) {
-                if (window.playAlarm) {
-                  window.logManager.info('调用window.playAlarm方法')
-                  window.playAlarm()
-                } else {
-                  window.logManager.warn('window.playAlarm方法不可用')
-                }
-                // 显示闹钟弹窗
-                setShowAlarmModal(true)
-                window.logManager.info('闹钟弹窗已显示')
-              }
-            }
+          // 如果时间到了，停止播放（这个逻辑通常由Android原生定时器触发，但保留作为备份）
+          if (remainingTime <= 0) {
+            handleTimerComplete()
+          }
         } catch (error) {
           window.logManager.error('计时器执行过程中出错', error)
         }
       }, 1000)
     } else {
-      // 暂停时重置计时
-      window.logManager.info('计时器暂停', { currentRemaining: timeRemaining })
+      // 暂停时取消Android原生定时器
+      window.logManager.info('计时器暂停', { currentRemaining: timeRemaining, sessionId })
 
-      // 取消Android原生定时器
-      if (window.AlarmSchedulerBridge) {
+      if (window.TimerSchedulerBridge && window.TimerSchedulerBridge.cancelTimer) {
         try {
-          const success = window.AlarmSchedulerBridge.cancelAlarm()
+          const success = window.TimerSchedulerBridge.cancelTimer()
           window.logManager.info('Android原生定时器取消结果: ' + success)
         } catch (error) {
           window.logManager.error('取消Android原生定时器失败', error)
         }
       }
+
+      // 更新数据库会话状态
+      if (sessionId) {
+        updateTimerSession(sessionId, { status: 'paused', remainingTime })
+          .then(() => window.logManager.info('数据库会话已暂停'))
+          .catch(error => window.logManager.error('暂停数据库会话失败', error))
+      }
+
+      // 重置开始时间
+      setStartTime(null)
+      setInitialDuration(null)
     }
 
     return () => {
@@ -208,7 +202,105 @@ function App() {
         window.logManager.debug('计时器已清除')
       }
     }
-  }, [isPlaying, timeRemaining, enableAlarm, timerDuration])
+  }, [isPlaying, timeRemaining, enableAlarm, enableVibration, timerDuration, sessionId])
+
+  // 定时完成处理函数（主要由Java端调用）
+  const handleTimerComplete = async () => {
+    window.logManager.info('定时完成处理开始', { sessionId, timerDuration })
+
+    // 停止播放
+    setIsPlaying(false)
+    setStartTime(null)
+    setInitialDuration(null)
+
+    // 更新数据库会话状态为已完成
+    if (sessionId) {
+      try {
+        await updateTimerSession(sessionId, { status: 'completed', remainingTime: 0 })
+        window.logManager.info('数据库会话已标记为完成', { sessionId })
+        setSessionId(null)
+      } catch (error) {
+        window.logManager.error('更新数据库会话状态失败', error)
+      }
+    }
+
+    // 记录完整播放时间
+    try {
+      await savePlaybackRecord(timerDuration, 'completed')
+      window.logManager.info('已记录播放记录', { duration: timerDuration })
+    } catch (error) {
+      window.logManager.error('保存播放记录失败', error)
+    }
+
+    // 无论是否启用闹钟，播放结束后媒体声音都调回80%
+    if (window.setVolumeTo80Percent) {
+      try {
+        window.setVolumeTo80Percent()
+        window.logManager.info('媒体音量已调回80%')
+      } catch (error) {
+        window.logManager.error('调整音量失败', error)
+      }
+    }
+
+    // 显示播放结束通知
+    const endTime = new Date()
+    const endTimeString = endTime.toLocaleTimeString()
+    const notificationTitle = '睡眠冥想助手'
+    const notificationBody = `冥想已结束\n设置时长：${timerDuration}分钟\n结束时间：${endTimeString}`
+
+    // 发送通知
+    try {
+      // Android平台通知
+      if (window.NotificationBridge && window.NotificationBridge.sendNotification) {
+        window.NotificationBridge.sendNotification(notificationTitle, notificationBody)
+        window.logManager.info('Android通知已发送', { title: notificationTitle, body: notificationBody })
+      }
+
+      // Web平台通知
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(notificationTitle, {
+          body: notificationBody,
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-72x72.png'
+        })
+        window.logManager.info('Web通知已发送')
+      }
+    } catch (error) {
+      window.logManager.error('发送通知时出错', error)
+    }
+
+    // 如果启用了闹钟功能，显示闹钟弹窗
+    if (enableAlarm) {
+      if (window.playAlarm) {
+        try {
+          window.logManager.info('调用window.playAlarm方法')
+          window.playAlarm()
+        } catch (error) {
+          window.logManager.error('调用playAlarm方法失败', error)
+        }
+      } else {
+        window.logManager.warn('window.playAlarm方法不可用')
+      }
+      // 显示闹钟弹窗
+      setShowAlarmModal(true)
+      window.logManager.info('闹钟弹窗已显示')
+    }
+
+    window.logManager.info('定时完成处理结束')
+  }
+
+  // 暴露全局回调函数，供Android TimerReceiver调用（这是定时结束的主要判断依据）
+  useEffect(() => {
+    window.onTimerComplete = (alarmEnabled, duration) => {
+      window.logManager.info('收到Android定时器回调（主要判断依据）', { alarmEnabled, duration })
+      // 调用处理函数，这是定时结束的主要触发点
+      handleTimerComplete()
+    }
+
+    return () => {
+      window.onTimerComplete = null
+    }
+  }, [enableAlarm, timerDuration, sessionId])
 
   const handlePlayPause = () => {
     window.logManager.info('播放/暂停按钮被点击', { currentState: isPlaying ? '播放中' : '暂停中' })

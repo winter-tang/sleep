@@ -18,6 +18,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.PowerManager;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.net.Uri;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -47,14 +51,15 @@ public class MainActivity extends AppCompatActivity {
     private static final String CHANNEL_ID = "sleep_meditation_notifications";
     private static final String CHANNEL_NAME = "睡眠冥想助手通知";
     private static final String CHANNEL_DESCRIPTION = "睡眠冥想助手的通知";
-    
+
     private WebView webView;
     private AlarmAudioPlayer alarmAudioPlayer;
     private RegularAudioPlayer regularAudioPlayer;
     private boolean permissionsGranted = false;
     private NotificationManager notificationManager;
     private AlarmScheduler alarmScheduler;
-    
+    private TimerScheduler timerScheduler;
+
     // 需要请求的权限
     private static final String[] REQUIRED_PERMISSIONS = {
             android.Manifest.permission.VIBRATE,
@@ -63,6 +68,12 @@ public class MainActivity extends AppCompatActivity {
             android.Manifest.permission.ACCESS_NETWORK_STATE,
             android.Manifest.permission.INTERNET
     };
+    
+    // 厂商包名
+    private static final String MIUI_PACKAGE_NAME = "com.miui.securitycenter";
+    private static final String HUAWEI_PACKAGE_NAME = "com.huawei.systemmanager";
+    private static final String OPPO_PACKAGE_NAME = "com.coloros.oppoguardelf";
+    private static final String VIVO_PACKAGE_NAME = "com.vivo.permissionmanager";
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,13 +118,24 @@ public class MainActivity extends AppCompatActivity {
         // 初始化闹钟调度器
         alarmScheduler = new AlarmScheduler(this);
         Log.d(TAG, "闹钟调度器已初始化");
-        
+
         // 获取WebView并配置
         webView = findViewById(R.id.webview);
         if (webView != null) {
             setupWebView();
+            // 在setupWebView之后设置WebView引用，确保WebView已完全初始化
+            TimerReceiver.setWebView(webView);
+            Log.d(TAG, "WebView引用已设置到TimerReceiver");
         }
-        
+
+        // 初始化定时器调度器
+        timerScheduler = new TimerScheduler(this);
+        Log.d(TAG, "定时器调度器已初始化");
+
+        // 检测电池优化（对于小米等定制系统尤为重要）
+        checkBatteryOptimization();
+        Log.d(TAG, "电池优化检测完成");
+
         // 请求权限
         requestPermissions();
     }
@@ -137,14 +159,15 @@ public class MainActivity extends AppCompatActivity {
         if (BuildConfig.DEBUG) {
             WebView.setWebContentsDebuggingEnabled(true);
         }
-        
+
         // 添加JavaScript接口
         webView.addJavascriptInterface(new AlarmAudioInterface(), "AlarmAudioBridge");
         webView.addJavascriptInterface(new RegularAudioInterface(), "RegularAudioBridge");
         webView.addJavascriptInterface(new NotificationInterface(), "NotificationBridge");
         webView.addJavascriptInterface(new AlarmSchedulerInterface(), "AlarmSchedulerBridge");
+        webView.addJavascriptInterface(new TimerSchedulerInterface(), "TimerSchedulerBridge");
         Log.d(TAG, "JavaScript接口已添加到WebView");
-        
+
         // 设置WebViewClient
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -290,6 +313,57 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Log.d(TAG, "通知权限已授予");
             }
+        }
+    }
+    
+    /**
+     * 检测并处理电池优化
+     * 对于小米、华为等定制系统，需要用户手动关闭电池优化
+     */
+    private void checkBatteryOptimization() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            boolean isIgnoringBatteryOptimizations = powerManager.isIgnoringBatteryOptimizations(getPackageName());
+            
+            Log.d(TAG, "电池优化状态: " + (isIgnoringBatteryOptimizations ? "已忽略" : "未忽略"));
+            
+            if (!isIgnoringBatteryOptimizations) {
+                // 显示对话框，引导用户关闭电池优化
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("电池优化警告")
+                       .setMessage("为了确保定时功能在后台和锁屏时正常工作，需要关闭电池优化。点击'去设置'按钮，在电池优化设置中选择'不优化'。")
+                       .setPositiveButton("去设置", new DialogInterface.OnClickListener() {
+                           @Override
+                           public void onClick(DialogInterface dialog, int which) {
+                               Intent intent = new Intent();
+                               intent.setAction(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                               intent.setData(Uri.parse("package:" + getPackageName()));
+                               startActivity(intent);
+                           }
+                       })
+                       .setNegativeButton("取消", null)
+                       .show();
+            }
+        }
+        
+        // 检查是否是小米手机，特殊处理
+        if (isMIUI()) {
+            Log.d(TAG, "检测到小米手机，建议用户在安全中心设置应用自启动权限");
+            // 可以在这里添加更具体的小米手机处理逻辑
+        }
+    }
+    
+    /**
+     * 检测是否是小米手机
+     */
+    private boolean isMIUI() {
+        try {
+            Class<?> cls = Class.forName("android.os.SystemProperties");
+            java.lang.reflect.Method method = cls.getDeclaredMethod("get", String.class);
+            String miuiVersion = (String) method.invoke(null, "ro.miui.ui.version.name");
+            return miuiVersion != null && !miuiVersion.isEmpty();
+        } catch (Exception e) {
+            return false;
         }
     }
     
@@ -516,6 +590,23 @@ public class MainActivity extends AppCompatActivity {
         public boolean hasPermissions() {
             return permissionsGranted;
         }
+
+        @android.webkit.JavascriptInterface
+        public boolean testVibration() {
+            Log.d(TAG, "JavaScript调用AlarmAudioBridge.testVibration");
+
+            try {
+                if (alarmAudioPlayer != null) {
+                    return alarmAudioPlayer.testVibration();
+                } else {
+                    Log.e(TAG, "alarmAudioPlayer 未初始化");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "测试震动时发生异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
     }
 
     /**
@@ -680,8 +771,102 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         }
+
+        @android.webkit.JavascriptInterface
+        public boolean testVibration() {
+            Log.d(TAG, "JavaScript调用AlarmSchedulerBridge.testVibration");
+
+            try {
+                // 直接测试震动，不启动闹钟服务
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.VIBRATE)
+                        == PackageManager.PERMISSION_GRANTED) {
+                    // 震动500ms，停止200ms，震动500ms
+                    android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                    if (vibrator != null) {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            // Android 8.0+ 使用 VibrationEffect
+                            android.os.VibrationEffect effect = android.os.VibrationEffect.createWaveform(
+                                new long[]{0, 500, 200, 500}, -1
+                            );
+                            vibrator.vibrate(effect);
+                        } else {
+                            // 旧版本
+                            vibrator.vibrate(new long[]{0, 500, 200, 500}, -1);
+                        }
+                        Log.d(TAG, "震动测试成功");
+                        return true;
+                    } else {
+                        Log.e(TAG, "Vibrator 服务不可用");
+                        return false;
+                    }
+                } else {
+                    Log.w(TAG, "没有震动权限");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "震动测试异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
     }
 
+
+    /**
+     * JavaScript接口类，用于处理定时器调度功能
+     */
+    private class TimerSchedulerInterface {
+
+        @android.webkit.JavascriptInterface
+        public boolean scheduleTimer(int delayInSeconds, boolean enableAlarm, boolean enableVibration, int timerDuration) {
+            Log.d(TAG, "JavaScript调用TimerSchedulerBridge.scheduleTimer，延迟: " + delayInSeconds + "秒, 启用闹钟: " + enableAlarm + ", 启用震动: " + enableVibration + ", 时长: " + timerDuration + "分钟");
+
+            try {
+                if (timerScheduler != null) {
+                    return timerScheduler.scheduleTimer(delayInSeconds, enableAlarm, enableVibration, timerDuration);
+                } else {
+                    Log.e(TAG, "timerScheduler 未初始化");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "设置定时器时发生异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public boolean cancelTimer() {
+            Log.d(TAG, "JavaScript调用TimerSchedulerBridge.cancelTimer");
+
+            try {
+                if (timerScheduler != null) {
+                    return timerScheduler.cancelTimer();
+                } else {
+                    Log.e(TAG, "timerScheduler 未初始化");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "取消定时器时发生异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
+
+        @android.webkit.JavascriptInterface
+        public boolean isTimerSet() {
+            Log.d(TAG, "JavaScript调用TimerSchedulerBridge.isTimerSet");
+
+            try {
+                if (timerScheduler != null) {
+                    return timerScheduler.isTimerSet();
+                } else {
+                    Log.e(TAG, "timerScheduler 未初始化");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "检查定时器状态时发生异常: " + e.getMessage(), e);
+                return false;
+            }
+        }
+    }
 
     /**
      * 处理返回键
@@ -699,28 +884,46 @@ public class MainActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
 
-        // 停止闹钟
-        if (alarmAudioPlayer != null) {
-            alarmAudioPlayer.stopAlarm();
-        }
+        try {
+            // 停止闹钟
+            if (alarmAudioPlayer != null) {
+                alarmAudioPlayer.stopAlarm();
+            }
 
-        // 停止普通音频
-        if (regularAudioPlayer != null) {
-            regularAudioPlayer.stopAudio();
-        }
+            // 停止普通音频
+            if (regularAudioPlayer != null) {
+                regularAudioPlayer.stopAudio();
+            }
 
-        // 清理WebView
-        if (webView != null) {
-            webView.clearHistory();
-            webView.clearCache(true);
-            webView.loadUrl("about:blank");
-            webView.onPause();
-            webView.removeAllViews();
-            webView.destroyDrawingCache();
-            webView.destroy();
-        }
+            // 清除TimerReceiver的WebView引用
+            TimerReceiver.clearWebView();
 
-        Log.d(TAG, "MainActivity已销毁");
+            // 清理WebView
+            if (webView != null) {
+                webView.clearHistory();
+                webView.clearCache(true);
+                webView.loadUrl("about:blank");
+                webView.onPause();
+                webView.removeAllViews();
+                webView.destroyDrawingCache();
+                webView.destroy();
+            }
+
+            Log.d(TAG, "MainActivity已销毁");
+        } catch (Exception e) {
+            Log.e(TAG, "MainActivity销毁过程中发生异常", e);
+            // 即使发生异常，也要确保音频停止
+            try {
+                if (regularAudioPlayer != null) {
+                    regularAudioPlayer.stopAudio();
+                }
+                if (alarmAudioPlayer != null) {
+                    alarmAudioPlayer.stopAlarm();
+                }
+            } catch (Exception ex) {
+                Log.e(TAG, "强制停止音频时发生异常", ex);
+            }
+        }
     }
     
     @Override

@@ -94,19 +94,18 @@ const LogViewer = ({ isVisible, onClose }) => {
     try {
       window.logManager.info('开始测试震动功能');
 
-      // Android平台震动
-      if (window.AlarmSchedulerBridge && window.AlarmSchedulerBridge.scheduleAlarm) {
-        // 设置1秒后触发的闹钟，启用震动
-        const result = window.AlarmSchedulerBridge.scheduleAlarm(1, true);
+      // Android平台震动 - 使用AlarmAudioBridge的testVibration方法（不触发闹钟）
+      if (window.AlarmAudioBridge && window.AlarmAudioBridge.testVibration) {
+        const result = window.AlarmAudioBridge.testVibration();
         window.logManager.info('Android震动测试结果: ' + result);
       } else {
-        window.logManager.warn('AlarmSchedulerBridge 不可用');
+        window.logManager.warn('AlarmAudioBridge.testVibration 不可用');
       }
 
       // Web平台震动（如果支持）
       if ('vibrate' in navigator) {
         try {
-          navigator.vibrate([500, 500, 500]); // 震动500ms，停止500ms，震动500ms
+          navigator.vibrate([500, 200, 500]); // 震动500ms，停止200ms，震动500ms
           window.logManager.info('Web震动已触发');
         } catch (error) {
           window.logManager.warn('Web震动失败: ' + error.message);

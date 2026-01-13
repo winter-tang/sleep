@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getPlaybackHistory, getTotalPlays } from '../utils/PlaybackHistory'
+import { getPlaybackHistory, getTotalPlays } from '../utils/DatabaseManager'
 import './PlaybackHistoryViewer.css'
 
 const PlaybackHistoryViewer = ({ isOpen, onClose }) => {
@@ -7,11 +7,17 @@ const PlaybackHistoryViewer = ({ isOpen, onClose }) => {
   const [totalPlays, setTotalPlays] = useState(0)
 
   // 加载播放记录
-  const loadHistory = () => {
-    const playbackHistory = getPlaybackHistory()
-    const total = getTotalPlays()
-    setHistory(playbackHistory)
-    setTotalPlays(total)
+  const loadHistory = async () => {
+    try {
+      const playbackHistory = await getPlaybackHistory()
+      const total = await getTotalPlays()
+      setHistory(playbackHistory)
+      setTotalPlays(total)
+    } catch (error) {
+      console.error('加载播放记录失败:', error)
+      setHistory([])
+      setTotalPlays(0)
+    }
   }
 
   // 当组件打开时加载数据
